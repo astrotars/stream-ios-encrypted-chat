@@ -1,5 +1,6 @@
 import UIKit
 import Alamofire
+import StreamChatCore
 
 class UsersViewController: UITableViewController {
     let userDefaults = UserDefaults()
@@ -22,6 +23,7 @@ class UsersViewController: UITableViewController {
                 self.tableView.reloadData()
             }
     }
+    
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
       return users.count
@@ -31,6 +33,14 @@ class UsersViewController: UITableViewController {
         let cell = tableView.dequeueReusableCell(withIdentifier: "DefaultCell", for: indexPath)
         cell.textLabel!.text = users[indexPath.row]
         return cell
+    }
+    
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        let userId = userDefaults.string(forKey: "userId")!
+        let userToChatWith = users[tableView.indexPathForSelectedRow!.row]
+        let channelId = [userId, userToChatWith].sorted().joined(separator: "-")
+        let viewController = segue.destination as! EncryptedChatViewController
+        viewController.channelPresenter = ChannelPresenter(channel: Channel(type: .messaging, id: channelId, members: [Member(User(id: userId, name: userId)), Member(User(id: userToChatWith, name: userToChatWith))]))
     }
 }
 

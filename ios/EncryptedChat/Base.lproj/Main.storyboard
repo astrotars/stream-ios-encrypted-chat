@@ -90,6 +90,9 @@
                                     <rect key="frame" x="0.0" y="0.0" width="414" height="43.5"/>
                                     <autoresizingMask key="autoresizingMask"/>
                                 </tableViewCellContentView>
+                                <connections>
+                                    <segue destination="9zb-pa-ulq" kind="show" id="2SL-pb-gQw"/>
+                                </connections>
                             </tableViewCell>
                         </prototypes>
                         <connections>
@@ -120,6 +123,22 @@
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Rdy-9R-5U9" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="131.8840579710145" y="137.94642857142856"/>
+        </scene>
+        <!--Encrypted Chat View Controller-->
+        <scene sceneID="gwL-Dp-rmU">
+            <objects>
+                <viewController id="9zb-pa-ulq" customClass="EncryptedChatViewController" customModule="EncryptedChat" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="roD-cc-Ts9">
+                        <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor" cocoaTouchSystemColor="whiteColor"/>
+                        <viewLayoutGuide key="safeArea" id="9UV-19-QAS"/>
+                    </view>
+                    <navigationItem key="navigationItem" id="BJq-p5-Yqc"/>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="jzo-cQ-wRm" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="2552" y="138"/>
         </scene>
     </scenes>
 </document>

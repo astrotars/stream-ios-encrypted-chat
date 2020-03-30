@@ -17,6 +17,7 @@
 		F13DAAFE2429610A0035CAD1 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F13DAAFC2429610A0035CAD1 /* LaunchScreen.storyboard */; };
 		F13DAB07242961440035CAD1 /* StreamChatCore in Frameworks */ = {isa = PBXBuildFile; productRef = F13DAB06242961440035CAD1 /* StreamChatCore */; };
 		F13DAB09242961440035CAD1 /* StreamChat in Frameworks */ = {isa = PBXBuildFile; productRef = F13DAB08242961440035CAD1 /* StreamChat */; };
+		F17C26F224327DAA001DBE65 /* EncryptedChatViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F17C26F124327DAA001DBE65 /* EncryptedChatViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -29,6 +30,7 @@
 		F13DAAFA2429610A0035CAD1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F13DAAFD2429610A0035CAD1 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		F13DAAFF2429610A0035CAD1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F17C26F124327DAA001DBE65 /* EncryptedChatViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncryptedChatViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -68,6 +70,7 @@
 				F13DAAF32429610A0035CAD1 /* SceneDelegate.swift */,
 				F137CC0F242D43D0007A5B1C /* UsersViewController.swift */,
 				F137CC13242D49CD007A5B1C /* LoginViewController.swift */,
+				F17C26F124327DAA001DBE65 /* EncryptedChatViewController.swift */,
 				F13DAAF72429610A0035CAD1 /* Main.storyboard */,
 				F13DAAFA2429610A0035CAD1 /* Assets.xcassets */,
 				F13DAAFC2429610A0035CAD1 /* LaunchScreen.storyboard */,
@@ -159,6 +162,7 @@
 				F137CC14242D49CD007A5B1C /* LoginViewController.swift in Sources */,
 				F13DAAF22429610A0035CAD1 /* AppDelegate.swift in Sources */,
 				F137CC10242D43D0007A5B1C /* UsersViewController.swift in Sources */,
+				F17C26F224327DAA001DBE65 /* EncryptedChatViewController.swift in Sources */,
 				F13DAAF42429610A0035CAD1 /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
