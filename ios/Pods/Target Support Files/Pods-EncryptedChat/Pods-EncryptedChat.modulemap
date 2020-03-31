@@ -1,0 +1,6 @@
+framework module Pods_EncryptedChat {
+  umbrella header "Pods-EncryptedChat-umbrella.h"
+
+  export *
+  module * { export * }
+}

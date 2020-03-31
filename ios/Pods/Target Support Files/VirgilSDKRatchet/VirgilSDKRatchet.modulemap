@@ -1,0 +1,6 @@
+framework module VirgilSDKRatchet {
+  umbrella header "VirgilSDKRatchet-umbrella.h"
+
+  export *
+  module * { export * }
+}

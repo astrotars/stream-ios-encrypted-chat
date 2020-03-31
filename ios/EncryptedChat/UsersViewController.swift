@@ -16,7 +16,7 @@ class UsersViewController: UITableViewController {
         let userId = userDefaults.string(forKey: "userId")!
         
         AF
-            .request("https://ea3dfd9a.ngrok.io/v1/users", method: .get, headers: ["Authorization" : "Bearer \(authToken)"])
+            .request("https://6b390064.ngrok.io/v1/users", method: .get, headers: ["Authorization" : "Bearer \(authToken)"])
             .responseJSON { response in
                 let users = response.value as! [String]
                 self.users = users.filter { $0 != userId }
@@ -24,7 +24,6 @@ class UsersViewController: UITableViewController {
             }
     }
     
-
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
       return users.count
     }
@@ -40,7 +39,10 @@ class UsersViewController: UITableViewController {
         let userToChatWith = users[tableView.indexPathForSelectedRow!.row]
         let channelId = [userId, userToChatWith].sorted().joined(separator: "-")
         let viewController = segue.destination as! EncryptedChatViewController
-        viewController.channelPresenter = ChannelPresenter(channel: Channel(type: .messaging, id: channelId, members: [Member(User(id: userId, name: userId)), Member(User(id: userToChatWith, name: userToChatWith))]))
+        
+        let channelPresenter = ChannelPresenter(channel: Channel(type: .messaging, id: channelId, members: [Member(User(id: userId, name: userId)), Member(User(id: userToChatWith, name: userToChatWith))]))
+        
+        viewController.channelPresenter = channelPresenter
     }
 }
 

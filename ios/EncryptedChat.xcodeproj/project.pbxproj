@@ -3,24 +3,27 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 52;
+	objectVersion = 51;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7A032F8D9F00857FD4812055 /* Pods_EncryptedChat.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CE46C9C1B879CBBF7627BFD0 /* Pods_EncryptedChat.framework */; };
+		F122E2A1243298FC006A1A49 /* VirgilClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F122E2A0243298FC006A1A49 /* VirgilClient.swift */; };
 		F137CC10242D43D0007A5B1C /* UsersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F137CC0F242D43D0007A5B1C /* UsersViewController.swift */; };
 		F137CC14242D49CD007A5B1C /* LoginViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F137CC13242D49CD007A5B1C /* LoginViewController.swift */; };
-		F137CC17242D5791007A5B1C /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = F137CC16242D5791007A5B1C /* Alamofire */; };
 		F13DAAF22429610A0035CAD1 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F13DAAF12429610A0035CAD1 /* AppDelegate.swift */; };
 		F13DAAF42429610A0035CAD1 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F13DAAF32429610A0035CAD1 /* SceneDelegate.swift */; };
 		F13DAAF92429610A0035CAD1 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F13DAAF72429610A0035CAD1 /* Main.storyboard */; };
 		F13DAAFB2429610A0035CAD1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F13DAAFA2429610A0035CAD1 /* Assets.xcassets */; };
 		F13DAAFE2429610A0035CAD1 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F13DAAFC2429610A0035CAD1 /* LaunchScreen.storyboard */; };
-		F13DAB07242961440035CAD1 /* StreamChatCore in Frameworks */ = {isa = PBXBuildFile; productRef = F13DAB06242961440035CAD1 /* StreamChatCore */; };
-		F13DAB09242961440035CAD1 /* StreamChat in Frameworks */ = {isa = PBXBuildFile; productRef = F13DAB08242961440035CAD1 /* StreamChat */; };
 		F17C26F224327DAA001DBE65 /* EncryptedChatViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F17C26F124327DAA001DBE65 /* EncryptedChatViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		1D10EF1BCE7A238F63B92788 /* Pods-EncryptedChat.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-EncryptedChat.release.xcconfig"; path = "Target Support Files/Pods-EncryptedChat/Pods-EncryptedChat.release.xcconfig"; sourceTree = "<group>"; };
+		8BE4E931671EFF826862838D /* Pods-EncryptedChat.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-EncryptedChat.debug.xcconfig"; path = "Target Support Files/Pods-EncryptedChat/Pods-EncryptedChat.debug.xcconfig"; sourceTree = "<group>"; };
+		CE46C9C1B879CBBF7627BFD0 /* Pods_EncryptedChat.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_EncryptedChat.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		F122E2A0243298FC006A1A49 /* VirgilClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirgilClient.swift; sourceTree = "<group>"; };
 		F137CC0F242D43D0007A5B1C /* UsersViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsersViewController.swift; sourceTree = "<group>"; };
 		F137CC13242D49CD007A5B1C /* LoginViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginViewController.swift; sourceTree = "<group>"; };
 		F13DAAEE2429610A0035CAD1 /* EncryptedChat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EncryptedChat.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -38,20 +41,37 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F137CC17242D5791007A5B1C /* Alamofire in Frameworks */,
-				F13DAB09242961440035CAD1 /* StreamChat in Frameworks */,
-				F13DAB07242961440035CAD1 /* StreamChatCore in Frameworks */,
+				7A032F8D9F00857FD4812055 /* Pods_EncryptedChat.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		3F5E8A0D87D2BD454A4BA590 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				8BE4E931671EFF826862838D /* Pods-EncryptedChat.debug.xcconfig */,
+				1D10EF1BCE7A238F63B92788 /* Pods-EncryptedChat.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
+		90B63AFBEDBA6E2FAFFDDFE4 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				CE46C9C1B879CBBF7627BFD0 /* Pods_EncryptedChat.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		F13DAAE52429610A0035CAD1 = {
 			isa = PBXGroup;
 			children = (
 				F13DAAF02429610A0035CAD1 /* EncryptedChat */,
 				F13DAAEF2429610A0035CAD1 /* Products */,
+				3F5E8A0D87D2BD454A4BA590 /* Pods */,
+				90B63AFBEDBA6E2FAFFDDFE4 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -71,6 +91,7 @@
 				F137CC0F242D43D0007A5B1C /* UsersViewController.swift */,
 				F137CC13242D49CD007A5B1C /* LoginViewController.swift */,
 				F17C26F124327DAA001DBE65 /* EncryptedChatViewController.swift */,
+				F122E2A0243298FC006A1A49 /* VirgilClient.swift */,
 				F13DAAF72429610A0035CAD1 /* Main.storyboard */,
 				F13DAAFA2429610A0035CAD1 /* Assets.xcassets */,
 				F13DAAFC2429610A0035CAD1 /* LaunchScreen.storyboard */,
@@ -86,20 +107,17 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = F13DAB022429610A0035CAD1 /* Build configuration list for PBXNativeTarget "EncryptedChat" */;
 			buildPhases = (
+				2E20A2B950BE74F402BA6315 /* [CP] Check Pods Manifest.lock */,
 				F13DAAEA2429610A0035CAD1 /* Sources */,
 				F13DAAEB2429610A0035CAD1 /* Frameworks */,
 				F13DAAEC2429610A0035CAD1 /* Resources */,
+				773A0E86116729251147FF5C /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			name = EncryptedChat;
-			packageProductDependencies = (
-				F13DAB06242961440035CAD1 /* StreamChatCore */,
-				F13DAB08242961440035CAD1 /* StreamChat */,
-				F137CC16242D5791007A5B1C /* Alamofire */,
-			);
 			productName = EncryptedChat;
 			productReference = F13DAAEE2429610A0035CAD1 /* EncryptedChat.app */;
 			productType = "com.apple.product-type.application";
@@ -128,10 +146,6 @@
 				Base,
 			);
 			mainGroup = F13DAAE52429610A0035CAD1;
-			packageReferences = (
-				F13DAB05242961440035CAD1 /* XCRemoteSwiftPackageReference "stream-chat-swift" */,
-				F137CC15242D5791007A5B1C /* XCRemoteSwiftPackageReference "Alamofire" */,
-			);
 			productRefGroup = F13DAAEF2429610A0035CAD1 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -154,12 +168,55 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		2E20A2B950BE74F402BA6315 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-EncryptedChat-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		773A0E86116729251147FF5C /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-EncryptedChat/Pods-EncryptedChat-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-EncryptedChat/Pods-EncryptedChat-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-EncryptedChat/Pods-EncryptedChat-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		F13DAAEA2429610A0035CAD1 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				F137CC14242D49CD007A5B1C /* LoginViewController.swift in Sources */,
+				F122E2A1243298FC006A1A49 /* VirgilClient.swift in Sources */,
 				F13DAAF22429610A0035CAD1 /* AppDelegate.swift in Sources */,
 				F137CC10242D43D0007A5B1C /* UsersViewController.swift in Sources */,
 				F17C26F224327DAA001DBE65 /* EncryptedChatViewController.swift in Sources */,
@@ -305,6 +362,7 @@
 		};
 		F13DAB032429610A0035CAD1 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8BE4E931671EFF826862838D /* Pods-EncryptedChat.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
@@ -322,6 +380,7 @@
 		};
 		F13DAB042429610A0035CAD1 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 1D10EF1BCE7A238F63B92788 /* Pods-EncryptedChat.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
@@ -359,43 +418,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		F137CC15242D5791007A5B1C /* XCRemoteSwiftPackageReference "Alamofire" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/Alamofire/Alamofire";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 5.0.5;
-			};
-		};
-		F13DAB05242961440035CAD1 /* XCRemoteSwiftPackageReference "stream-chat-swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/GetStream/stream-chat-swift";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.6.1;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		F137CC16242D5791007A5B1C /* Alamofire */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = F137CC15242D5791007A5B1C /* XCRemoteSwiftPackageReference "Alamofire" */;
-			productName = Alamofire;
-		};
-		F13DAB06242961440035CAD1 /* StreamChatCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = F13DAB05242961440035CAD1 /* XCRemoteSwiftPackageReference "stream-chat-swift" */;
-			productName = StreamChatCore;
-		};
-		F13DAB08242961440035CAD1 /* StreamChat */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = F13DAB05242961440035CAD1 /* XCRemoteSwiftPackageReference "stream-chat-swift" */;
-			productName = StreamChat;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = F13DAAE62429610A0035CAD1 /* Project object */;
 }

@@ -1,0 +1,27 @@
+${PODS_ROOT}/Target Support Files/Pods-EncryptedChat/Pods-EncryptedChat-frameworks.sh
+${BUILT_PRODUCTS_DIR}/Alamofire/Alamofire.framework
+${BUILT_PRODUCTS_DIR}/GzipSwift/Gzip.framework
+${BUILT_PRODUCTS_DIR}/Nuke/Nuke.framework
+${BUILT_PRODUCTS_DIR}/ReachabilitySwift/Reachability.framework
+${BUILT_PRODUCTS_DIR}/RxAppState/RxAppState.framework
+${BUILT_PRODUCTS_DIR}/RxCocoa/RxCocoa.framework
+${BUILT_PRODUCTS_DIR}/RxGesture/RxGesture.framework
+${BUILT_PRODUCTS_DIR}/RxRelay/RxRelay.framework
+${BUILT_PRODUCTS_DIR}/RxSwift/RxSwift.framework
+${BUILT_PRODUCTS_DIR}/SnapKit/SnapKit.framework
+${BUILT_PRODUCTS_DIR}/Starscream/Starscream.framework
+${BUILT_PRODUCTS_DIR}/StreamChat/StreamChat.framework
+${BUILT_PRODUCTS_DIR}/StreamChatCore/StreamChatCore.framework
+${BUILT_PRODUCTS_DIR}/SwiftyGif/SwiftyGif.framework
+${PODS_ROOT}/VSCCrypto/Carthage/iOS/VSCCommon.framework
+${PODS_ROOT}/VSCCrypto/Carthage/iOS/VSCFoundation.framework
+${PODS_ROOT}/VSCCrypto/Carthage/iOS/VSCPythia.framework
+${PODS_ROOT}/VSCCrypto/Carthage/iOS/VSCRatchet.framework
+${BUILT_PRODUCTS_DIR}/VirgilCrypto/VirgilCrypto.framework
+${BUILT_PRODUCTS_DIR}/VirgilCryptoFoundation/VirgilCryptoFoundation.framework
+${BUILT_PRODUCTS_DIR}/VirgilCryptoPythia/VirgilCryptoPythia.framework
+${BUILT_PRODUCTS_DIR}/VirgilCryptoRatchet/VirgilCryptoRatchet.framework
+${BUILT_PRODUCTS_DIR}/VirgilE3Kit/VirgilE3Kit.framework
+${BUILT_PRODUCTS_DIR}/VirgilSDK/VirgilSDK.framework
+${BUILT_PRODUCTS_DIR}/VirgilSDKPythia/VirgilSDKPythia.framework
+${BUILT_PRODUCTS_DIR}/VirgilSDKRatchet/VirgilSDKRatchet.framework

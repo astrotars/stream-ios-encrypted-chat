@@ -1,0 +1,9 @@
+platform :ios, '11.0'
+inhibit_all_warnings!
+
+target 'EncryptedChat' do
+  use_frameworks!
+  pod 'StreamChat', '~> 1.6'
+  pod 'Alamofire', '~> 5.0'
+  pod 'VirgilE3Kit', '~> 2.0.0'
+end
