@@ -24,16 +24,12 @@ class EncryptedChatViewController: ChatViewController {
     }
     
     override func messageCell(at indexPath: IndexPath, message: Message, readUsers: [User]) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "message")
-            ?? UITableViewCell(style: .value2, reuseIdentifier: "message")
+        var modifyMessage = message
         
-        cell.textLabel?.text = message.user.name
-        cell.textLabel?.font = .systemFont(ofSize: 12, weight: .bold)
-        
-        cell.detailTextLabel?.text = message.user.id == user ?
+        modifyMessage.text = message.user.id == user ?
             VirgilClient.shared.decryptMine(message.text) :
             VirgilClient.shared.decryptTheirs(message.text, from: otherUser!)
         
-        return cell
+        return super.messageCell(at: indexPath, message: modifyMessage, readUsers: readUsers)
     }
 }
