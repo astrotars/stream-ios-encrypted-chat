@@ -17,6 +17,7 @@
 		F13DAAFB2429610A0035CAD1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F13DAAFA2429610A0035CAD1 /* Assets.xcassets */; };
 		F13DAAFE2429610A0035CAD1 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F13DAAFC2429610A0035CAD1 /* LaunchScreen.storyboard */; };
 		F17C26F224327DAA001DBE65 /* EncryptedChatViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F17C26F124327DAA001DBE65 /* EncryptedChatViewController.swift */; };
+		F192224D24575C8D0075A072 /* Account.swift in Sources */ = {isa = PBXBuildFile; fileRef = F192224C24575C8D0075A072 /* Account.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -34,6 +35,7 @@
 		F13DAAFD2429610A0035CAD1 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		F13DAAFF2429610A0035CAD1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F17C26F124327DAA001DBE65 /* EncryptedChatViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EncryptedChatViewController.swift; sourceTree = "<group>"; };
+		F192224C24575C8D0075A072 /* Account.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Account.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -91,6 +93,7 @@
 				F137CC0F242D43D0007A5B1C /* UsersViewController.swift */,
 				F137CC13242D49CD007A5B1C /* LoginViewController.swift */,
 				F17C26F124327DAA001DBE65 /* EncryptedChatViewController.swift */,
+				F192224C24575C8D0075A072 /* Account.swift */,
 				F122E2A0243298FC006A1A49 /* VirgilClient.swift */,
 				F13DAAF72429610A0035CAD1 /* Main.storyboard */,
 				F13DAAFA2429610A0035CAD1 /* Assets.xcassets */,
@@ -215,6 +218,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F192224D24575C8D0075A072 /* Account.swift in Sources */,
 				F137CC14242D49CD007A5B1C /* LoginViewController.swift in Sources */,
 				F122E2A1243298FC006A1A49 /* VirgilClient.swift in Sources */,
 				F13DAAF22429610A0035CAD1 /* AppDelegate.swift in Sources */,

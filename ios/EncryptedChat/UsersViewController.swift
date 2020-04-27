@@ -5,7 +5,6 @@ import StreamChatCore
 import StreamChatClient
 
 class UsersViewController: UITableViewController {
-    let userDefaults = UserDefaults()
     var users = [String]()
     
     override func viewDidLoad() {
@@ -14,15 +13,9 @@ class UsersViewController: UITableViewController {
     }
     
     func loadUsers() {
-        let authToken = userDefaults.string(forKey: "authToken")!
-        let userId = userDefaults.string(forKey: "userId")!
-        
-        AF
-            .request("https://57a385f3.ngrok.io/v1/users", method: .get, headers: ["Authorization" : "Bearer \(authToken)"])
-            .responseJSON { response in
-                let users = response.value as! [String]
-                self.users = users.filter { $0 != userId }
-                self.tableView.reloadData()
+        Account.shared.users { users in
+            self.users = users
+            self.tableView.reloadData()
         }
     }
     
@@ -37,7 +30,7 @@ class UsersViewController: UITableViewController {
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        let userId = userDefaults.string(forKey: "userId")!
+        let userId = Account.shared.userId!
         let userToChatWith = users[tableView.indexPathForSelectedRow!.row]
         let channelId = [userId, userToChatWith].sorted().joined(separator: "-")
         let viewController = segue.destination as! EncryptedChatViewController
