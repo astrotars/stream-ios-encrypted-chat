@@ -4,12 +4,21 @@ import StreamChatCore
 import StreamChatClient
 
 class EncryptedChatViewController: ChatViewController {
+    var user: String?
+    var otherUser: String?
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        presenter?.messagePreparationCallback = {
+        guard let presenter = presenter else {
+            return
+        }
+        
+        VirgilClient.shared.prepareUser(otherUser!)
+        
+        presenter.messagePreparationCallback = {
             var message = $0
-            message.text = "helllooo"
+            message.text = VirgilClient.shared.encrypt(message.text, for: self.otherUser!)
             return message
         }
     }
@@ -20,7 +29,10 @@ class EncryptedChatViewController: ChatViewController {
         
         cell.textLabel?.text = message.user.name
         cell.textLabel?.font = .systemFont(ofSize: 12, weight: .bold)
-        cell.detailTextLabel?.text = "hello helosdfasdfs"
+        
+        cell.detailTextLabel?.text = message.user.id == user ?
+            VirgilClient.shared.decryptMine(message.text) :
+            VirgilClient.shared.decryptTheirs(message.text, from: otherUser!)
         
         return cell
     }

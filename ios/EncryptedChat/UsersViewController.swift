@@ -50,6 +50,8 @@ class UsersViewController: UITableViewController {
             )
         )
         
+        viewController.user = userId
+        viewController.otherUser = userToChatWith
         viewController.presenter = channelPresenter
     }
 }
