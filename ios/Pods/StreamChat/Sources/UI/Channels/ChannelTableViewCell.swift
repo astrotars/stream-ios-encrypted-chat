@@ -18,8 +18,7 @@ open class ChannelTableViewCell: UITableViewCell, Reusable {
     public private(set) var needsToSetup = true
     
     /// An avatar view.
-    public private(set) lazy var avatarView = AvatarView(cornerRadius: style.avatarViewStyle?.radius ?? .channelAvatarRadius,
-                                                         font: style.avatarViewStyle?.placeholderFont)
+    public private(set) lazy var avatarView = AvatarView(style: style.avatarViewStyle)
     
     /// A dispose bag for the cell.
     public private(set) var disposeBag = DisposeBag()
@@ -54,7 +53,7 @@ open class ChannelTableViewCell: UITableViewCell, Reusable {
         return label
     }()
     
-    override public func prepareForReuse() {
+    override open func prepareForReuse() {
         reset()
         super.prepareForReuse()
     }
@@ -97,11 +96,16 @@ open class ChannelTableViewCell: UITableViewCell, Reusable {
         
         if let avatarViewStyle = style.avatarViewStyle {
             hasAvatar = true
+            avatarView.backgroundColor = style.backgroundColor
             contentView.addSubview(avatarView)
             
             avatarView.backgroundColor = backgroundColor
             avatarView.snp.makeConstraints { make in
-                make.top.equalToSuperview().offset(style.edgeInsets.top).priority(999)
+                if avatarViewStyle.verticalAlignment == .center {
+                    make.centerY.equalToSuperview().priority(999)
+                } else {
+                    make.top.equalToSuperview().offset(style.edgeInsets.top).priority(999)
+                }
                 make.bottom.lessThanOrEqualToSuperview().offset(-style.edgeInsets.bottom).priority(999)
                 make.left.equalToSuperview().offset(style.edgeInsets.left)
                 make.size.equalTo(avatarViewStyle.size)
@@ -110,7 +114,7 @@ open class ChannelTableViewCell: UITableViewCell, Reusable {
         
         nameLabel.snp.makeConstraints { make in
             if style.verticalTextAlignment == .center {
-                make.bottom.equalTo(avatarView.snp.centerY).offset(style.spacing.vertical / -2).priority(999)
+                make.bottom.equalTo(contentView.snp.centerY).offset(style.spacing.vertical / -2).priority(999)
                 make.left.equalTo(avatarView.snp.right).offset(style.spacing.horizontal)
             } else {
                 make.top.equalToSuperview().offset(style.edgeInsets.top).priority(999)
@@ -141,7 +145,7 @@ open class ChannelTableViewCell: UITableViewCell, Reusable {
         
         messageLabel.snp.makeConstraints { make in
             if style.verticalTextAlignment == .center {
-                make.top.equalTo(avatarView.snp.centerY).offset(style.spacing.vertical / 2).priority(999)
+                make.top.equalTo(contentView.snp.centerY).offset(style.spacing.vertical / 2).priority(999)
             } else {
                 make.top.equalTo(nameLabel.snp.bottom).offset(style.spacing.vertical).priority(999)
             }
@@ -212,5 +216,13 @@ open class ChannelTableViewCell: UITableViewCell, Reusable {
         }
         
         infoLabel.text = info
+    }
+    
+    /// Update the date of the cell with a given date
+    ///
+    /// - Parameters:
+    ///  - date: Date to be written in the date label.
+    open func update(date: Date) {
+        dateLabel.text = date.relative
     }
 }

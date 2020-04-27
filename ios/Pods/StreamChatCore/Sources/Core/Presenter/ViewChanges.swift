@@ -7,29 +7,35 @@
 //
 
 import UIKit
+import StreamChatClient
 
 /// A view changes.
 ///
 /// ViewChanges describes how a view should be updated depends on a data response.
-public enum ViewChanges: Equatable {
+public enum ViewChanges: Equatable, Decodable {
+    
     /// No changes.
     case none
     /// Reload all views.
-    case reloaded(_ scrollToRow: Int, _ items: [ChatItem])
+    case reloaded(_ scrollToRow: Int, _ items: [PresenterItem])
     /// Add item at row and reload another one.
-    case itemsAdded(_ rows: [Int], _ reloadRow: Int?, _ forceToScroll: Bool, _ items: [ChatItem])
+    case itemsAdded(_ rows: [Int], _ reloadRow: Int?, _ forceToScroll: Bool, _ items: [PresenterItem])
     /// Update items with messages.
-    case itemsUpdated(_ rows: [Int], [Message], _ items: [ChatItem])
+    case itemsUpdated(_ rows: [Int], [Message], _ items: [PresenterItem])
     /// Remove item at row.
-    case itemRemoved(_ row: Int, _ items: [ChatItem])
+    case itemRemoved(_ row: Int, _ items: [PresenterItem])
     /// Move item from row to another.
-    case itemMoved(fromRow: Int, toRow: Int, _ items: [ChatItem])
+    case itemMoved(fromRow: Int, toRow: Int, _ items: [PresenterItem])
     /// Update fiiter.
     case footerUpdated
     /// Disconnected deliberately.
     case disconnected
     /// Error message.
-    case error(AnyError)
+    case error(ClientError)
+    
+    public init(from decoder: Decoder) throws {
+        self = .none
+    }
 }
 
 extension ViewChanges: CustomStringConvertible {

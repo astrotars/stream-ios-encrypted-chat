@@ -3,7 +3,9 @@ inhibit_all_warnings!
 
 target 'EncryptedChat' do
   use_frameworks!
-  pod 'StreamChat', '~> 1.6'
+  pod 'StreamChat', :git => "https://github.com/GetStream/stream-chat-swift.git", :commit => "ada0b955658cc39a6d96512adaeec0fb34bf4730"
+  pod 'StreamChatCore', :git => "https://github.com/GetStream/stream-chat-swift.git", :commit => "ada0b955658cc39a6d96512adaeec0fb34bf4730"
+    pod 'StreamChatClient', :git => "https://github.com/GetStream/stream-chat-swift.git", :commit => "ada0b955658cc39a6d96512adaeec0fb34bf4730"
   pod 'Alamofire', '~> 5.0'
   pod 'VirgilE3Kit', '~> 2.0.0'
 end

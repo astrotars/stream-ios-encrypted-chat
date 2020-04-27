@@ -1,8 +1,14 @@
 // The MIT License (MIT)
 //
-// Copyright (c) 2015-2019 Alexander Grebenyuk (github.com/kean).
+// Copyright (c) 2015-2020 Alexander Grebenyuk (github.com/kean).
 
 import Foundation
+
+#if !os(macOS)
+import UIKit.UIImage
+#else
+import AppKit.NSImage
+#endif
 
 // MARK: - ImageTask
 
@@ -14,6 +20,8 @@ public /* final */ class ImageTask: Hashable, CustomStringConvertible {
     /// An identifier uniquely identifies the task within a given pipeline. Only
     /// unique within this pipeline.
     public let taskId: Int
+
+    let isDataTask: Bool
 
     weak var pipeline: ImagePipeline?
 
@@ -49,17 +57,21 @@ public /* final */ class ImageTask: Hashable, CustomStringConvertible {
     private(set) var _isCancelled = false
     private let lock: NSLock?
 
+    let queue: DispatchQueue?
+
     /// A completion handler to be called when task finishes or fails.
     public typealias Completion = (_ result: Result<ImageResponse, ImagePipeline.Error>) -> Void
 
     /// A progress handler to be called periodically during the lifetime of a task.
     public typealias ProgressHandler = (_ intermediateResponse: ImageResponse?, _ completedUnitCount: Int64, _ totalUnitCount: Int64) -> Void
 
-    init(taskId: Int, request: ImageRequest, isMainThreadConfined: Bool = false) {
+    init(taskId: Int, request: ImageRequest, isMainThreadConfined: Bool = false, isDataTask: Bool, queue: DispatchQueue?) {
         self.taskId = taskId
         self.request = request
         self._priority = request.priority
         self.priority = request.priority
+        self.isDataTask = isDataTask
+        self.queue = queue
         lock = isMainThreadConfined ? nil : NSLock()
     }
 
@@ -108,15 +120,7 @@ public /* final */ class ImageTask: Hashable, CustomStringConvertible {
     // MARK: - CustomStringConvertible
 
     public var description: String {
-        return """
-        ImageTask {
-            id: \(taskId)
-            priority: \(priority)
-            completedUnitCount: \(completedUnitCount)
-            totalUnitCount: \(totalUnitCount)
-            isCancelled: \(isCancelled)
-        }
-        """
+        return "ImageTask(id: \(taskId), priority: \(priority), completedUnitCount: \(completedUnitCount), totalUnitCount: \(totalUnitCount), isCancelled: \(isCancelled))"
     }
 }
 
@@ -124,19 +128,19 @@ public /* final */ class ImageTask: Hashable, CustomStringConvertible {
 
 /// Represents an image response.
 public final class ImageResponse {
-    public let image: Image
+    public let image: PlatformImage
     public let urlResponse: URLResponse?
     // the response is only nil when new disk cache is enabled (it only stores
     // data for now, but this might change in the future).
     public let scanNumber: Int?
 
-    public init(image: Image, urlResponse: URLResponse? = nil, scanNumber: Int? = nil) {
+    public init(image: PlatformImage, urlResponse: URLResponse? = nil, scanNumber: Int? = nil) {
         self.image = image
         self.urlResponse = urlResponse
         self.scanNumber = scanNumber
     }
 
-    func map(_ transformation: (Image) -> Image?) -> ImageResponse? {
+    func map(_ transformation: (PlatformImage) -> PlatformImage?) -> ImageResponse? {
         return autoreleasepool {
             guard let output = transformation(image) else {
                 return nil

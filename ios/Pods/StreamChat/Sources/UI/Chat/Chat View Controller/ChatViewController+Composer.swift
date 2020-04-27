@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import StreamChatClient
 import StreamChatCore
 import Photos.PHPhotoLibrary
 import SnapKit
@@ -16,7 +17,11 @@ import RxCocoa
 // MARK: Setup Keyboard Events
 extension Reactive where Base: ChatViewController {
     var keyboard: Binder<KeyboardNotification> {
-        return Binder<KeyboardNotification>(base) { chatViewController, keyboardNotification in
+        Binder<KeyboardNotification>(base) { chatViewController, keyboardNotification in
+            guard chatViewController.isVisible else {
+                return
+            }
+            
             var bottom: CGFloat = 0
             
             if keyboardNotification.isVisible {
@@ -96,7 +101,7 @@ extension ChatViewController {
     }
     
     func setupComposerView() {
-        guard composerView.superview == nil, let presenter = channelPresenter else {
+        guard composerView.superview == nil, let presenter = presenter else {
             return
         }
         
@@ -111,7 +116,7 @@ extension ChatViewController {
                 .disposed(by: disposeBag)
         }
         
-        let textViewEvents = composerView.textView.rx.text.skip(1).unwrap().share()
+        let textViewEvents = composerView.textView.rx.text.skip(1).compactMap({ $0 }).share()
         
         // Dispatch commands from text view.
         textViewEvents.subscribe(onNext: { [weak self] in self?.dispatchCommands(in: $0) }).disposed(by: disposeBag)
@@ -122,7 +127,7 @@ extension ChatViewController {
                               textViewEvents.debounce(.seconds(3), scheduler: MainScheduler.instance).map { _ in false }])
                 .distinctUntilChanged()
                 .flatMapLatest({ [weak self] isTyping in
-                    self?.channelPresenter?.channel.send(eventType: isTyping ? .typingStart : .typingStop) ?? .empty()
+                    self?.presenter?.channel.rx.send(eventType: isTyping ? .typingStart : .typingStop) ?? .empty()
                 })
                 .subscribe()
                 .disposed(by: disposeBag)
@@ -154,7 +159,7 @@ extension ChatViewController {
     /// Send a message.
     public func send() {
         let text = composerView.text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let isMessageEditing = channelPresenter?.editMessage != nil
+        let isMessageEditing = presenter?.editMessage != nil
         
         if findCommand(in: text) != nil || isMessageEditing {
             view.endEditing(true)
@@ -164,9 +169,9 @@ extension ChatViewController {
             composerEditingContainerView.animate(show: false)
         }
         
-        composerView.isEnabled = false
+        composerView.styleState = .disabled
         
-        channelPresenter?.send(text: text)
+        presenter?.rx.send(text: text)
             .subscribe(
                 onNext: { [weak self] messageResponse in
                     if messageResponse.message.type == .error {
@@ -220,7 +225,7 @@ extension ChatViewController {
         container.closeButton.rx.tap
             .subscribe(onNext: { [weak self] _ in
                 if let self = self {
-                    self.channelPresenter?.editMessage = nil
+                    self.presenter?.editMessage = nil
                     self.composerView.reset()
                     self.hideAddFileView()
                     self.composerEditingContainerView.animate(show: false)
@@ -242,9 +247,9 @@ extension ChatViewController {
     
     func createComposerCommandsContainerView() -> ComposerHelperContainerView {
         let container = createComposerHelperContainerView(title: "Commands", closeButtonIsHidden: true)
-        container.isEnabled = !(channelPresenter?.channel.config.commands.isEmpty ?? true)
+        container.isEnabled = !(presenter?.channel.config.commands.isEmpty ?? true)
         
-        if container.isEnabled, let channelConfig = channelPresenter?.channel.config {
+        if container.isEnabled, let channelConfig = presenter?.channel.config {
             channelConfig.commands.forEach { command in
                 let view = ComposerCommandView(frame: .zero)
                 view.backgroundColor = container.backgroundColor
@@ -331,7 +336,7 @@ extension ChatViewController {
     ///
     /// - Returns: a container helper view.
     open func createComposerAddFileContainerView(title: String) -> ComposerHelperContainerView? {
-        guard let presenter = channelPresenter, presenter.channel.config.uploadsEnabled, !composerAddFileTypes.isEmpty else {
+        guard let presenter = presenter, presenter.channel.config.uploadsEnabled, !composerAddFileTypes.isEmpty else {
             return nil
         }
         
@@ -452,25 +457,35 @@ extension ChatViewController {
         }
         
         showImagePicker(sourceType: pickerSourceType) { [weak self] pickedImage, status in
+            guard let self = self else {
+                return
+            }
+            
             guard status == .authorized else {
-                self?.showImagePickerAuthorizationStatusAlert(status)
+                self.showImagePickerAuthorizationStatusAlert(status)
                 return
             }
             
             if let resources = try? pickedImage?.fileURL?.resourceValues(forKeys: [.fileSizeKey]),
                let fileSize = resources.fileSize,
                fileSize >= 20 * 1_048_576 { // 20 MB Upload limit
-                self?.show(errorMessage: "File size exceeds limit of 20MB")
+                self.show(errorMessage: "File size exceeds limit of 20MB")
                 return
             }
             
-            guard let channel = self?.channelPresenter?.channel else {
+            guard let presenter = self.presenter,
+                let pickedImage = pickedImage,
+                (pickedImage.fileURL != nil || pickedImage.image != nil) else {
                 return
             }
             
-            if let pickedImage = pickedImage, let uploaderItem = UploaderItem(channel: channel, pickedImage: pickedImage) {
-                self?.composerView.addImageUploaderItem(uploaderItem)
-            }
+            let extraData = presenter.imageAttachmentExtraDataCallback?(pickedImage.fileURL,
+                                                                        pickedImage.image,
+                                                                        pickedImage.isVideo,
+                                                                        presenter.channel)
+            
+            let uploaderItem = UploaderItem(channel: presenter.channel, pickedImage: pickedImage, extraData: extraData)
+            self.composerView.addImageUploaderItem(uploaderItem)
         }
         
         hideAddFileView()
@@ -483,8 +498,12 @@ extension ChatViewController {
         documentPickerViewController.rx.didPickDocumentsAt
             .takeUntil(documentPickerViewController.rx.deallocated)
             .subscribe(onNext: { [weak self] in
-                if let self = self, let channel = self.channelPresenter?.channel {
-                    $0.forEach { url in self.composerView.addFileUploaderItem(UploaderItem(channel: channel, url: url)) }
+                if let self = self, let presenter = self.presenter {
+                    $0.forEach { url in
+                        let extraData = presenter.fileAttachmentExtraDataCallback?(url, presenter.channel)
+                        let uploaderItem = UploaderItem(channel: presenter.channel, url: url, extraData: extraData)
+                        self.composerView.addFileUploaderItem(uploaderItem)
+                    }
                 }
             })
             .disposed(by: disposeBag)
@@ -497,7 +516,7 @@ extension ChatViewController {
 // MARK: Ephemeral Message Action
 
 extension ChatViewController {
-    func sendActionForEphemeral(message: Message, button: UIButton) {
+    func sendActionForEphemeralMessage(_ message: Message, button: UIButton) {
         let buttonText = button.title(for: .normal)
         
         guard let attachment = message.attachments.first,
@@ -505,6 +524,8 @@ extension ChatViewController {
                 return
         }
         
-        channelPresenter?.dispatch(action: action, message: message).subscribe().disposed(by: disposeBag)
+        presenter?.rx.dispatchEphemeralMessageAction(action, message: message)
+            .subscribe()
+            .disposed(by: disposeBag)
     }
-}
+} // swiftlint:disable:this file_length

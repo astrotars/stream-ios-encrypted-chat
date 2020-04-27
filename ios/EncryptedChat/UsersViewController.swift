@@ -1,6 +1,8 @@
 import UIKit
 import Alamofire
+import StreamChat
 import StreamChatCore
+import StreamChatClient
 
 class UsersViewController: UITableViewController {
     let userDefaults = UserDefaults()
@@ -16,16 +18,16 @@ class UsersViewController: UITableViewController {
         let userId = userDefaults.string(forKey: "userId")!
         
         AF
-            .request("https://6b390064.ngrok.io/v1/users", method: .get, headers: ["Authorization" : "Bearer \(authToken)"])
+            .request("https://57a385f3.ngrok.io/v1/users", method: .get, headers: ["Authorization" : "Bearer \(authToken)"])
             .responseJSON { response in
                 let users = response.value as! [String]
                 self.users = users.filter { $0 != userId }
                 self.tableView.reloadData()
-            }
+        }
     }
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-      return users.count
+        return users.count
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -40,9 +42,15 @@ class UsersViewController: UITableViewController {
         let channelId = [userId, userToChatWith].sorted().joined(separator: "-")
         let viewController = segue.destination as! EncryptedChatViewController
         
-        let channelPresenter = ChannelPresenter(channel: Channel(type: .messaging, id: channelId, members: [Member(User(id: userId, name: userId)), Member(User(id: userToChatWith, name: userToChatWith))]))
+        let channelPresenter = ChannelPresenter(
+            channel: Client.shared.channel(
+                type: .messaging,
+                id: channelId,
+                members: [User(id: userId), User(id: userToChatWith)]
+            )
+        )
         
-        viewController.channelPresenter = channelPresenter
+        viewController.presenter = channelPresenter
     }
 }
 

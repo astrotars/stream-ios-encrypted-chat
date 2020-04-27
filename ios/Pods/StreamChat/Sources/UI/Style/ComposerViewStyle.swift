@@ -24,6 +24,8 @@ public struct ComposerViewStyle {
     public var font: UIFont
     /// A text color.
     public var textColor: UIColor
+    /// Placeholder text
+    public var placeholderText: String
     /// A placeholder text color.
     public var placeholderTextColor: UIColor
     /// A background color.
@@ -60,6 +62,7 @@ public struct ComposerViewStyle {
     ///   - states: composer states (see `States`).
     public init(font: UIFont = .chatRegular,
                 textColor: UIColor = .black,
+                placeholderText: String = "Write a message",
                 placeholderTextColor: UIColor = .chatGray,
                 backgroundColor: UIColor = .clear,
                 helperContainerBackgroundColor: UIColor = .white,
@@ -72,6 +75,7 @@ public struct ComposerViewStyle {
                                   .disabled: .init(tintColor: .chatGray, borderWidth: 2)]) {
         self.font = font
         self.textColor = textColor
+        self.placeholderText = placeholderText
         self.placeholderTextColor = placeholderTextColor
         self.backgroundColor = backgroundColor
         self.helperContainerBackgroundColor = helperContainerBackgroundColor
@@ -83,15 +87,10 @@ public struct ComposerViewStyle {
     }
     
     /// A composer style for a state.
-    ///
     /// - Parameter state: a composer state.
     /// - Returns: a composer state style.
     public func style(with state: State) -> Style {
-        if let style = states[state] {
-            return style
-        }
-        
-        return Style()
+        states[state, default: Style()]
     }
 }
 
@@ -104,13 +103,12 @@ extension ComposerViewStyle {
     
     /// A composer style.
     public struct Style: Hashable {
-        /// A tint color.
-        public let tintColor: UIColor
+        /// A tint color. Also used as border color.
+        public var tintColor: UIColor
         /// A border width.
-        public let borderWidth: CGFloat
+        public var borderWidth: CGFloat
         
         /// Init a cosposerty state style.
-        ///
         /// - Parameters:
         ///   - tintColor: a tint color.
         ///   - borderWidth: a border width.
@@ -120,8 +118,7 @@ extension ComposerViewStyle {
         }
         
         public static func == (lhs: Style, rhs: Style) -> Bool {
-            return lhs.tintColor == rhs.tintColor
-                && lhs.borderWidth == rhs.borderWidth
+            lhs.tintColor == rhs.tintColor && lhs.borderWidth == rhs.borderWidth
         }
         
         public func hash(into hasher: inout Hasher) {
@@ -134,7 +131,7 @@ extension ComposerViewStyle {
 extension ComposerViewStyle: Hashable {
     
     public static func == (lhs: ComposerViewStyle, rhs: ComposerViewStyle) -> Bool {
-        return lhs.font == rhs.font
+        lhs.font == rhs.font
             && lhs.textColor == rhs.textColor
             && lhs.placeholderTextColor == rhs.placeholderTextColor
             && lhs.backgroundColor == rhs.backgroundColor

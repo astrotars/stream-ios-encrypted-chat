@@ -7,9 +7,9 @@
 //
 
 import UIKit
+import StreamChatClient
 import StreamChatCore
 import RxSwift
-import RxAppState
 
 /// A banners manager.
 public final class Banners {
@@ -40,7 +40,7 @@ public final class Banners {
     
     init() {
         DispatchQueue.main.async {
-            UIApplication.shared.rx.appState
+            UIApplication.shared.rx.state
                 .filter { $0 == .background }
                 .subscribe(onNext: { [weak self] _ in self?.items = [] })
                 .disposed(by: self.disposeBag)
@@ -60,7 +60,7 @@ public final class Banners {
                      backgroundColor: UIColor = .white,
                      borderColor: UIColor? = nil) {
         DispatchQueue.main.async {
-            guard UIApplication.shared.appState == .active else {
+            guard UIApplication.shared.applicationState == .active else {
                 return
             }
             

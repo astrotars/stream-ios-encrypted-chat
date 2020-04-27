@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import StreamChatClient
 import StreamChatCore
 
 // MARK: - Table Footer View
@@ -14,7 +15,7 @@ import StreamChatCore
 extension ChatViewController {
     
     func updateFooterView() {
-        guard let footerView = tableView.tableFooterView as? ChatFooterView, let presenter = channelPresenter else {
+        guard let footerView = tableView.tableFooterView as? ChatFooterView, let presenter = presenter else {
             return
         }
         
@@ -26,7 +27,7 @@ extension ChatViewController {
             return
         }
         
-        guard Client.shared.webSocket.isConnected else {
+        guard Client.shared.isConnected else {
             footerView.isHidden = false
             footerView.textLabel.text = "Connecting..."
             footerView.activityIndicatorView.startAnimating()
@@ -39,7 +40,7 @@ extension ChatViewController {
         
         footerView.isHidden = false
         footerView.textLabel.text = presenter.typingUsersText()
-        footerView.avatarView.update(with: user.avatarURL, name: user.name, baseColor: style.incomingMessage.chatBackgroundColor)
+        updateFooterTypingUserAvatarView(footerView: footerView, user: user)
         footerView.hide(after: TypingUser.timeout)
     }
 }

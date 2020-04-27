@@ -9,15 +9,14 @@
 import Foundation
 
 extension Date {
-    public static let `default` = Date()
-}
-
-extension Date {
-    var isToday: Bool {
+    
+    /// Checks if the date if today.
+    public var isToday: Bool {
         return Calendar.current.isDateInToday(self)
     }
     
-    var isYesterday: Bool {
+    /// Checks if the date if yesterday.
+    public var isYesterday: Bool {
         return Calendar.current.isDateInYesterday(self)
     }
 }

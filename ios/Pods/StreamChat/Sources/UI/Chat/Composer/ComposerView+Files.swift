@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import StreamChatClient
 import StreamChatCore
 import RxSwift
 
@@ -75,9 +76,7 @@ extension ComposerView {
         updateFilesStackView()
     }
     
-    var isUploaderFilesEmpty: Bool {
-        return (uploader?.items.firstIndex(where: { $0.type == .file })) == nil
-    }
+    var isUploaderFilesEmpty: Bool { (uploader?.items.firstIndex(where: { $0.type == .file })) == nil }
     
     func updateFilesStackView() {
         filesStackView.isHidden = isUploaderFilesEmpty

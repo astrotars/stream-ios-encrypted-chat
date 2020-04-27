@@ -1,11 +1,11 @@
 import UIKit
-import StreamChat
-import StreamChatCore
+import StreamChatClient
 import Alamofire
 import VirgilE3Kit
 
 class LoginViewController: UIViewController {
     let userDefaults = UserDefaults()
+    let apiRoot = "https://57a385f3.ngrok.io"
     
     @IBOutlet weak var usernameField: UITextField!
     
@@ -16,7 +16,7 @@ class LoginViewController: UIViewController {
         }
         
         AF
-            .request("https://6b390064.ngrok.io/v1/authenticate",
+            .request("\(apiRoot)/v1/authenticate",
                      method: .post,
                      parameters: ["user" : userId],
                      encoder: JSONParameterEncoder.default)
@@ -35,16 +35,17 @@ class LoginViewController: UIViewController {
     
     func setupStream(userId: String, authToken: String)  {
         AF
-            .request("https://6b390064.ngrok.io/v1/stream-credentials",
+            .request("\(apiRoot)/v1/stream-credentials",
                      method: .post,
                      headers: ["Authorization" : "Bearer \(authToken)"])
             .responseJSON { response in
                 let body = response.value as! NSDictionary
                 let token = body["token"]! as! String
+                let apiKey = body["apiKey"]! as! String
                 
-                Client.config = .init(apiKey: "whe3wer2pf4r", logOptions: .info)
+                Client.config = .init(apiKey: apiKey, logOptions: .info)
                 Client.shared.set(
-                    user: User(id: userId, name: userId),
+                    user: User(id: userId),
                     token: token
                 )
                 
@@ -54,16 +55,13 @@ class LoginViewController: UIViewController {
     
     func setupVirgil(_ authToken: String) {
         AF
-            .request("https://6b390064.ngrok.io/v1/virgil-credentials",
+            .request("\(apiRoot)/v1/virgil-credentials",
                      method: .post,
                      headers: ["Authorization" : "Bearer \(authToken)"])
             .responseJSON { response in
                 let userId = self.userDefaults.string(forKey: "userId")!
                 let body = response.value as! NSDictionary
                 let token = body["token"]! as! String
-                
-                self.userDefaults.set(token, forKey: "virgilToken")
-                self.userDefaults.synchronize()
           
                 VirgilClient.configure(identity: userId, token: token)
                 

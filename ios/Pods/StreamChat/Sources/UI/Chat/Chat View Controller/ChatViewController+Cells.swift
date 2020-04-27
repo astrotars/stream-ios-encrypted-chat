@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import StreamChatClient
 import StreamChatCore
 import RxSwift
 import RxCocoa
@@ -17,7 +18,7 @@ import RxGesture
 extension ChatViewController {
     
     func extensionMessageCell(at indexPath: IndexPath, message: Message, readUsers: [User]) -> UITableViewCell {
-        guard let presenter = channelPresenter else {
+        guard let presenter = presenter else {
             return .unused
         }
         
@@ -65,7 +66,7 @@ extension ChatViewController {
             }
         }
         
-        var isContinueMessage = false
+        cell.isContinueMessage = false
         let prevRow = indexPath.row - 1
         
         if prevRow >= 0,
@@ -74,18 +75,16 @@ extension ChatViewController {
             prevMessage.user == message.user,
             !prevMessage.text.messageContainsOnlyEmoji,
             (!presenter.channel.config.reactionsEnabled || !message.hasReactions) {
-            isContinueMessage = true
+            cell.isContinueMessage = true
         }
         
-        cell.updateBackground(isContinueMessage: isContinueMessage)
+        cell.updateBackground()
         
         if showAvatar {
             cell.update(name: message.user.name, date: message.created)
             
             if messageStyle.avatarViewStyle != nil {
-                cell.avatarView.update(with: message.user.avatarURL,
-                                       name: message.user.name,
-                                       baseColor: messageStyle.chatBackgroundColor)
+                updateMessageCellAvatarView(in: cell, message: message, messageStyle: messageStyle)
             }
         }
         
@@ -100,7 +99,7 @@ extension ChatViewController {
                                    at: index,
                                    from: message,
                                    tap: { [weak self] in self?.show(attachment: $0, at: $1, from: $2) },
-                                   actionTap: { [weak self] in self?.sendActionForEphemeral(message: $0, button: $1) },
+                                   actionTap: { [weak self] in self?.sendActionForEphemeralMessage($0, button: $1) },
                                    reload: { [weak self] in
                                     if let self = self {
                                         self.tableView.reloadRows(at: [indexPath], with: .none)
@@ -108,7 +107,8 @@ extension ChatViewController {
                 })
             }
             
-            cell.updateBackground(isContinueMessage: !message.isEphemeral)
+            cell.isContinueMessage = !message.isEphemeral
+            cell.updateBackground()
         }
         
         guard !message.isEphemeral else {
@@ -178,7 +178,7 @@ extension ChatViewController {
             }
         }
         
-        if let presenter = channelPresenter, presenter.channel.config.reactionsEnabled {
+        if let presenter = presenter, presenter.channel.config.reactionsEnabled {
             showReactions(from: cell, in: message, locationInView: tapGesture.location(in: cell))
         }
     }
@@ -196,26 +196,22 @@ extension ChatViewController {
         showWebView(url: attachment.url, title: attachment.title)
     }
     
-    private func userActivityCell(at indexPath: IndexPath, user: User, _ text: String) -> UITableViewCell {
-        let cell = tableView.dequeueMessageCell(for: indexPath, style: style.incomingMessage)
-        cell.update(info: text)
-        cell.update(date: Date())
-        cell.avatarView.update(with: user.avatarURL, name: user.name, baseColor: style.incomingMessage.chatBackgroundColor)
-        return cell
-    }
-    
     func showReplies(parentMessage: Message) {
-        guard let presenter = channelPresenter else {
+        guard let presenter = presenter else {
             return
         }
         
-        let messagePresenter = ChannelPresenter(channel: presenter.channel,
-                                                parentMessage: parentMessage,
-                                                showStatuses: presenter.showStatuses)
+        let messagePresenter = ChannelPresenter(channel: presenter.channel, parentMessage: parentMessage)
+        messagePresenter.showStatuses = presenter.showStatuses
+        messagePresenter.messageExtraDataCallback = presenter.messageExtraDataCallback
+        messagePresenter.reactionExtraDataCallback = presenter.reactionExtraDataCallback
+        messagePresenter.fileAttachmentExtraDataCallback = presenter.fileAttachmentExtraDataCallback
+        messagePresenter.imageAttachmentExtraDataCallback = presenter.imageAttachmentExtraDataCallback
+        messagePresenter.messagePreparationCallback = presenter.messagePreparationCallback
         
         let chatViewController = ChatViewController(nibName: nil, bundle: nil)
         chatViewController.style = style
-        chatViewController.channelPresenter = messagePresenter
+        chatViewController.presenter = messagePresenter
         
         if let navigationController = navigationController {
             navigationController.pushViewController(chatViewController, animated: true)

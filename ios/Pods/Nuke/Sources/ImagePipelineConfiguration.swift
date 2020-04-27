@@ -1,8 +1,10 @@
 // The MIT License (MIT)
 //
-// Copyright (c) 2015-2019 Alexander Grebenyuk (github.com/kean).
+// Copyright (c) 2015-2020 Alexander Grebenyuk (github.com/kean).
 
 import Foundation
+
+// MARK: - ImagePipeline.Configuration
 
 extension ImagePipeline {
     public struct Configuration {
@@ -50,7 +52,20 @@ extension ImagePipeline {
         public var imageDecompressingQueue = OperationQueue()
         #endif
 
+        // MARK: - Processors
+
+        /// Processors to be applied by default to all images loaded by the
+        /// pipeline.
+        /// If a request has a non-empty processors list, the pipeline won't
+        /// apply its own processors, leaving the request as is.
+        /// This lets clients have an override point on request basis.
+        public var processors: [ImageProcessing] = []
+
         // MARK: - Options
+
+        /// A queue on which all callbacks, like `progress` and `completion`
+        /// callbacks are called. `.main` by default.
+        public var callbackQueue = DispatchQueue.main
 
         #if !os(macOS)
         /// Decompresses the loaded images. `true` by default.
@@ -156,6 +171,41 @@ extension ImagePipeline {
             #if !os(macOS)
             self.imageDecompressingQueue.maxConcurrentOperationCount = 2
             #endif
+        }
+    }
+}
+
+// MARK: - ImagePipelineObserving
+
+public enum ImageTaskEvent {
+    case started
+    case cancelled
+    case priorityUpdated(priority: ImageRequest.Priority)
+    case intermediateResponseReceived(response: ImageResponse)
+    case progressUpdated(completedUnitCount: Int64, totalUnitCount: Int64)
+    case completed(result: Result<ImageResponse, ImagePipeline.Error>)
+}
+
+/// Allows you to tap into internal events of the image pipeline. Events are
+/// delivered on the internal serial dispatch queue.
+public protocol ImagePipelineObserving {
+    /// Delivers the events produced by the image tasks started via `loadImage` method.
+    func pipeline(_ pipeline: ImagePipeline, imageTask: ImageTask, didReceiveEvent event: ImageTaskEvent)
+}
+
+extension ImageTaskEvent {
+    init(_ event: Task<ImageResponse, ImagePipeline.Error>.Event) {
+        switch event {
+        case let .error(error):
+            self = .completed(result: .failure(error))
+        case let .value(response, isCompleted):
+            if isCompleted {
+                self = .completed(result: .success(response))
+            } else {
+                self = .intermediateResponseReceived(response: response)
+            }
+        case let .progress(progress):
+            self = .progressUpdated(completedUnitCount: progress.completed, totalUnitCount: progress.total)
         }
     }
 }

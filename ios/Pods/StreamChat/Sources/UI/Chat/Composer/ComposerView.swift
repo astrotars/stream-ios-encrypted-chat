@@ -18,28 +18,7 @@ public final class ComposerView: UIView {
     /// A composer view  style.
     public var style: ComposerViewStyle?
     
-    private var styleState: ComposerViewStyle.State = .disabled {
-        didSet {
-            if styleState != oldValue, let style = style {
-                let styleState = style.style(with: self.styleState)
-                layer.borderWidth = styleState.borderWidth
-                layer.borderColor = styleState.tintColor.cgColor
-                textView.tintColor = styleState.tintColor
-                sendButton.tintColor = styleState.tintColor
-                attachmentButton.tintColor = styleState.tintColor
-                
-                if self.styleState == .edit {
-                    sendButton.setTitleColor(styleState.tintColor, for: .normal)
-                } else if self.styleState == .active {
-                    sendButton.setTitleColor(styleState.tintColor, for: .normal)
-                }
-            }
-        }
-    }
-    
-    private var styleStateStyle: ComposerViewStyle.Style? {
-        return style?.style(with: styleState)
-    }
+    private var styleStateStyle: ComposerViewStyle.Style? { style?.style(with: styleState) }
     
     /// An `UITextView`.
     /// You have to use the `text` property to change the value of the text view.
@@ -67,14 +46,10 @@ public final class ComposerView: UIView {
     /// Uploader for images and files.
     public var uploader: Uploader?
     
-    /// An editing state of the composer.
-    public var isEditing: Bool = false
-    
     /// A placeholder label.
     /// You have to use the `placeholderText` property to change the value of the placeholder label.
     public private(set) lazy var placeholderLabel: UILabel = {
         let label = UILabel(frame: .zero)
-        label.textColor = style?.placeholderTextColor
         textView.addSubview(label)
         
         label.snp.makeConstraints { make in
@@ -120,7 +95,7 @@ public final class ComposerView: UIView {
     /// The text of the text view.
     public var text: String {
         get {
-            return textView.attributedText.string.trimmingCharacters(in: .whitespacesAndNewlines)
+            textView.attributedText.string.trimmingCharacters(in: .whitespacesAndNewlines)
         }
         set {
             textView.attributedText = attributedText(text: newValue)
@@ -130,7 +105,7 @@ public final class ComposerView: UIView {
     
     /// The placeholder text.
     public var placeholderText: String {
-        get { return placeholderLabel.attributedText?.string ?? "" }
+        get { placeholderLabel.attributedText?.string ?? "" }
         set { placeholderLabel.attributedText = attributedText(text: newValue, textColor: styleStateStyle?.tintColor) }
     }
     
@@ -144,9 +119,12 @@ public final class ComposerView: UIView {
                                                              .paragraphStyle: NSParagraphStyle.default])
     }
     
-    /// Toggle `isUserInteractionEnabled` states for all child views.
-    public var isEnabled: Bool = true {
+    /// A composer view style state and it will toggle `isUserInteractionEnabled` states for all child views.
+    public var styleState: ComposerViewStyle.State = .normal {
         didSet {
+            update(for: styleState)
+            let isEnabled = styleState != .disabled
+            
             if let style = style {
                 sendButton.isEnabled = style.sendButtonVisibility == .whenActive ? isEnabled : false
                 sendButtonVisibilityBehaviorSubject.onNext((sendButton.isHidden, sendButton.isEnabled))
@@ -155,7 +133,7 @@ public final class ComposerView: UIView {
             attachmentButton.isEnabled = isEnabled
             imagesCollectionView.isUserInteractionEnabled = isEnabled
             imagesCollectionView.alpha = isEnabled ? 1 : 0.5
-            styleState = isEnabled ? .normal : .disabled
+            textView.isEditable = isEnabled
         }
     }
 }
@@ -168,7 +146,7 @@ public extension ComposerView {
     /// - Parameters:
     ///   - view: a superview.
     ///   - placeholderText: a placeholder text.
-    func addToSuperview(_ view: UIView, placeholderText: String = "Write a message") {
+    func addToSuperview(_ view: UIView) {
         guard let style = style else {
             return
         }
@@ -269,16 +247,16 @@ public extension ComposerView {
         }
         
         // Add placeholder.
-        self.placeholderText = placeholderText
+        self.placeholderText = style.placeholderText
+        placeholderLabel.textColor = style.placeholderTextColor
         
         updateToolbarIfNeeded()
-        updateStyleState()
+        styleState = .normal
     }
     
     /// Reset states of all child views and clear all added/generated data.
     func reset() {
-        isEnabled = true
-        isEditing = false
+        styleState = .normal
         previousTextBeforeReset = textView.attributedText
         textView.attributedText = attributedText()
         uploader?.reset()
@@ -317,10 +295,33 @@ public extension ComposerView {
             return
         }
         
-        styleState = !textView.isFirstResponder
+        let styleState: ComposerViewStyle.State = !textView.isFirstResponder
             && imageUploaderItems.isEmpty
             && isUploaderFilesEmpty
-            && text.isEmpty ? .normal : (isEditing ? .edit : .active)
+            && text.isEmpty ? .normal : (self.styleState == .edit ? .edit : .active)
+        
+        if self.styleState != styleState {
+            self.styleState = styleState
+        }
+    }
+    
+    private func update(for styleState: ComposerViewStyle.State) {
+        guard let style = style else {
+            return
+        }
+        
+        let styleForCurrentState = style.style(with: styleState)
+        layer.borderWidth = styleForCurrentState.borderWidth
+        layer.borderColor = styleForCurrentState.tintColor.cgColor
+        textView.tintColor = styleForCurrentState.tintColor
+        sendButton.tintColor = styleForCurrentState.tintColor
+        attachmentButton.tintColor = styleForCurrentState.tintColor
+        
+        if styleState == .edit {
+            sendButton.setTitleColor(styleForCurrentState.tintColor, for: .normal)
+        } else if styleState == .active {
+            sendButton.setTitleColor(styleForCurrentState.tintColor, for: .normal)
+        }
     }
 }
 
@@ -360,22 +361,31 @@ extension ComposerView {
 private extension ComposerView {
     func addBlurredBackground(blurEffectStyle: UIBlurEffect.Style) {
         let isDark = blurEffectStyle == .dark
+        let blurEffect: UIBlurEffect
         
-        guard !UIAccessibility.isReduceTransparencyEnabled else {
-            backgroundColor = isDark ? .chatDarkGray : .chatComposer
-            return
+        if #available(iOS 13, *) {
+            blurEffect = UIBlurEffect(style: .systemThinMaterial)
+        } else {
+            if UIAccessibility.isReduceTransparencyEnabled {
+                backgroundColor = isDark ? .chatDarkGray : .chatComposer
+                return
+            }
+            
+            blurEffect = UIBlurEffect(style: blurEffectStyle)
         }
         
-        let blurEffect = UIBlurEffect(style: blurEffectStyle)
         let blurView = UIVisualEffectView(effect: blurEffect)
         blurView.isUserInteractionEnabled = false
         insertSubview(blurView, at: 0)
         blurView.makeEdgesEqualToSuperview()
         
-        let adjustingView = UIView(frame: .zero)
-        adjustingView.isUserInteractionEnabled = false
-        adjustingView.backgroundColor = .init(white: isDark ? 1 : 0, alpha: isDark ? 0.25 : 0.1)
-        insertSubview(adjustingView, at: 0)
-        adjustingView.makeEdgesEqualToSuperview()
+        // Adjust the blur effect for iOS 12 and below.
+        if #available(iOS 13, *) {} else {
+            let adjustingView = UIView(frame: .zero)
+            adjustingView.isUserInteractionEnabled = false
+            adjustingView.backgroundColor = .init(white: isDark ? 1 : 0, alpha: isDark ? 0.25 : 0.1)
+            insertSubview(adjustingView, at: 0)
+            adjustingView.makeEdgesEqualToSuperview()
+        }
     }
 }

@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import StreamChatClient
 import StreamChatCore
 import SnapKit
 import RxSwift
@@ -14,22 +15,14 @@ import RxCocoa
 
 /// A chat view controller of a channel.
 open class ChatViewController: ViewController, UITableViewDataSource, UITableViewDelegate {
-    
     /// A chat style.
     public lazy var style = defaultStyle
-    
     /// A default chat style. This is useful for subclasses.
-    open var defaultStyle: ChatViewStyle {
-        return .default
-    }
-    
+    open var defaultStyle: ChatViewStyle { .default }
     /// Message actions (see `MessageAction`).
     public lazy var messageActions = defaultMessageActions
-    
     /// A default message actions. This is useful for subclasses.
-    open var defaultMessageActions: MessageAction {
-        return .all
-    }
+    open var defaultMessageActions: MessageAction { .all }
     
     /// Message actions (see `MessageAction`).
     @available(iOS 13, *)
@@ -41,18 +34,22 @@ open class ChatViewController: ViewController, UITableViewDataSource, UITableVie
         return true
     }
     
+    /// A emoji-based reaction types.
+    public lazy var emojiReactionTypes = defaultEmojiReactionTypes
+    
+    /// A default emoji-based reaction types.
+    open var defaultEmojiReactionTypes: EmojiReactionTypes {
+        ["like": ("👍", 1), "love": ("❤️", 1), "haha": ("😂", 1), "wow": ("😲", 1), "sad": ("😔", 1), "angry": ("😠", 1)]
+    }
+    
     /// A dispose bag for rx subscriptions.
     public let disposeBag = DisposeBag()
     /// A list of table view items, e.g. messages.
-    public private(set) var items = [ChatItem]()
+    public private(set) var items = [PresenterItem]()
     private var needsToReload = true
     /// A reaction view.
     weak var reactionsView: ReactionsView?
-    
-    var scrollEnabled: Bool {
-        return reactionsView == nil
-    }
-    
+    var scrollEnabled: Bool { reactionsView == nil }
     /// A composer view.
     public private(set) lazy var composerView = createComposerView()
     var keyboardIsVisible = false
@@ -65,16 +62,16 @@ open class ChatViewController: ViewController, UITableViewDataSource, UITableVie
             return tabBar.frame.height
         }
         
-        return view.safeAreaInsets.bottom > 0 ? view.safeAreaInsets.bottom : (parent?.view.safeAreaInsets.bottom ?? 0)
+        let initialSafeAreaInsetBottom = view.safeAreaInsets.bottom - additionalSafeAreaInsets.bottom
+        
+        return initialSafeAreaInsetBottom > 0 ? initialSafeAreaInsetBottom : (parent?.view.safeAreaInsets.bottom ?? 0)
     }
     
     /// Attachments file types for thw composer view.
     public lazy var composerAddFileTypes = defaultComposerAddFileTypes
     
     /// Default attachments file types for thw composer view. This is useful for subclasses.
-    public var defaultComposerAddFileTypes: [ComposerAddFileType] {
-        return [.photo, .camera, .file]
-    }
+    public var defaultComposerAddFileTypes: [ComposerAddFileType] = [.photo, .camera, .file]
     
     private(set) lazy var composerEditingContainerView = createComposerEditingContainerView()
     private(set) lazy var composerCommandsContainerView = createComposerCommandsContainerView()
@@ -111,11 +108,11 @@ open class ChatViewController: ViewController, UITableViewDataSource, UITableVie
         + style.composer.edgeInsets.bottom
     
     /// A channel presenter.
-    public var channelPresenter: ChannelPresenter?
+    public var presenter: ChannelPresenter?
     private var changesEnabled: Bool = false
     
     lazy var keyboard: Keyboard = {
-       return Keyboard(observingPanGesturesIn: tableView)
+        return Keyboard(observingPanGesturesIn: tableView)
     }()
     
     // MARK: - View Life Cycle
@@ -126,13 +123,13 @@ open class ChatViewController: ViewController, UITableViewDataSource, UITableVie
         
         updateTitle()
         
-        guard let presenter = channelPresenter else {
+        guard let presenter = presenter else {
             return
         }
         
-        if presenter.channel.config.isEmpty {
-            presenter.channelDidUpdate.asObservable()
-                .takeWhile { $0.config.isEmpty }
+        if !presenter.channel.didLoad {
+            presenter.rx.channelDidUpdate.asObservable()
+                .takeWhile { !$0.didLoad }
                 .subscribe(onCompleted: { [weak self] in self?.setupComposerView() })
                 .disposed(by: disposeBag)
         } else {
@@ -141,7 +138,7 @@ open class ChatViewController: ViewController, UITableViewDataSource, UITableVie
         
         composerView.uploader = presenter.uploader
         
-        presenter.changes
+        presenter.rx.changes
             .filter { [weak self] _ in
                 if let self = self {
                     self.needsToReload = self.needsToReload || !self.isVisible
@@ -149,21 +146,26 @@ open class ChatViewController: ViewController, UITableViewDataSource, UITableVie
                 }
                 
                 return false
-            }
-            .drive(onNext: { [weak self] in self?.updateTableView(with: $0) })
-            .disposed(by: disposeBag)
+        }
+        .drive(onNext: { [weak self] in self?.updateTableView(with: $0) })
+        .disposed(by: disposeBag)
         
         if presenter.isEmpty {
-            channelPresenter?.reload()
+            presenter.reload()
         } else {
             refreshTableView(scrollToBottom: true, animated: false)
         }
         
         needsToReload = false
         changesEnabled = true
-        setupFooterUpdates()
+        updateFooterView()
         
         keyboard.notification.bind(to: rx.keyboard).disposed(by: self.disposeBag)
+        
+        Client.shared.rx.connectionState
+            .observeOn(MainScheduler.instance)
+            .subscribe(onNext: { [weak self] in self?.update(for: $0) })
+            .disposed(by: disposeBag)
     }
     
     override open func viewDidAppear(_ animated: Bool) {
@@ -171,7 +173,7 @@ open class ChatViewController: ViewController, UITableViewDataSource, UITableVie
         startGifsAnimations()
         markReadIfPossible()
         
-        if let presenter = channelPresenter, (needsToReload || presenter.items != items) {
+        if let presenter = presenter, (needsToReload || presenter.items != items) {
             let scrollToBottom = items.isEmpty || (scrollEnabled && tableView.bottomContentOffset < bottomThreshold)
             refreshTableView(scrollToBottom: scrollToBottom, animated: false)
         }
@@ -183,16 +185,12 @@ open class ChatViewController: ViewController, UITableViewDataSource, UITableVie
     }
     
     override open var preferredStatusBarStyle: UIStatusBarStyle {
-        return style.incomingMessage.textColor.isDark ? .default : .lightContent
+        style.incomingMessage.textColor.isDark ? .default : .lightContent
     }
     
     override open func willTransition(to newCollection: UITraitCollection,
                                       with coordinator: UIViewControllerTransitionCoordinator) {
         super.willTransition(to: newCollection, with: coordinator)
-        
-        if composerView.textView.isFirstResponder {
-            composerView.textView.resignFirstResponder()
-        }
         
         DispatchQueue.main.async { self.initialSafeAreaBottom = self.calculatedSafeAreaBottom }
     }
@@ -205,7 +203,7 @@ open class ChatViewController: ViewController, UITableViewDataSource, UITableVie
     ///   - scrollToBottom: scroll the table view to the bottom cell after refresh, if true
     ///   - animated: scroll to the bottom cell animated, if true
     open func refreshTableView(scrollToBottom: Bool, animated: Bool) {
-        guard let presenter = channelPresenter else {
+        guard let presenter = presenter else {
             return
         }
         
@@ -227,7 +225,24 @@ open class ChatViewController: ViewController, UITableViewDataSource, UITableVie
     ///   - readUsers: a list of users who read the message.
     /// - Returns: a message table view cell.
     open func messageCell(at indexPath: IndexPath, message: Message, readUsers: [User]) -> UITableViewCell {
-        return extensionMessageCell(at: indexPath, message: message, readUsers: readUsers)
+        extensionMessageCell(at: indexPath, message: message, readUsers: readUsers)
+    }
+    
+    /// Updates message cell avatar view.
+    /// - Parameters:
+    ///   - cell: a message cell.
+    ///   - message: a message.
+    ///   - messageStyle: a message style.
+    open func updateMessageCellAvatarView(in cell: MessageTableViewCell, message: Message, messageStyle: MessageViewStyle) {
+        cell.avatarView.update(with: message.user.avatarURL, name: message.user.name)
+    }
+    
+    /// Updates typing user avatar in the footer view.
+    /// - Parameters:
+    ///   - footerView: a footer view.
+    ///   - user: a user.
+    open func updateFooterTypingUserAvatarView(footerView: ChatFooterView, user: User) {
+        footerView.avatarView.update(with: user.avatarURL, name: user.name)
     }
     
     /// A custom loading cell to insert in a particular location of the table view.
@@ -236,7 +251,7 @@ open class ChatViewController: ViewController, UITableViewDataSource, UITableVie
     ///   - indexPath: an index path.
     /// - Returns: a loading table view cell.
     open func loadingCell(at indexPath: IndexPath) -> UITableViewCell? {
-        return nil
+        nil
     }
     
     /// A custom status cell to insert in a particular location of the table view.
@@ -247,27 +262,25 @@ open class ChatViewController: ViewController, UITableViewDataSource, UITableVie
     ///   - subtitle: a subtitle.
     ///   - highlighted: change the status cell style to highlighted.
     /// - Returns: a status table view cell.
-    open func statusCell(at indexPath: IndexPath,
-                         title: String,
-                         subtitle: String? = nil,
-                         textColor: UIColor) -> UITableViewCell? {
-        return nil
+    open func statusCell(at indexPath: IndexPath, title: String, subtitle: String? = nil, textColor: UIColor) -> UITableViewCell? {
+        nil
     }
     
-    /// Setup Footer updates for environement updates.
-    open func setupFooterUpdates() {
-        Client.shared.connection
-            .observeOn(MainScheduler.instance)
-            .debounce(.milliseconds(500), scheduler: MainScheduler.instance)
-            .subscribe(onNext: { [weak self] connection in
-                if let self = self {
-                    self.updateFooterView()
-                    self.composerView.isEnabled = connection.isConnected
-                }
-            })
-            .disposed(by: disposeBag)
-        
+    /// Updates for `FooterView` and `ComposerView` with the client connectionState.
+    open func update(for connectionState: ConnectionState) {
+        // Update footer.
         updateFooterView()
+        
+        // Update composer view.
+        if composerView.superview != nil {
+            if connectionState.isConnected {
+                if composerView.styleState == .disabled {
+                    composerView.styleState = .normal
+                }
+            } else {
+                composerView.styleState = .disabled
+            }
+        }
     }
     
     /// Show message actions when long press on a message cell.
@@ -296,7 +309,9 @@ open class ChatViewController: ViewController, UITableViewDataSource, UITableVie
     }
     
     private func markReadIfPossible() {
-        channelPresenter?.markReadIfPossible().subscribe().disposed(by: disposeBag)
+        if isVisible {
+            presenter?.rx.markReadIfPossible().subscribe().disposed(by: disposeBag)
+        }
     }
 }
 
@@ -305,7 +320,7 @@ open class ChatViewController: ViewController, UITableViewDataSource, UITableVie
 extension ChatViewController {
     
     private func updateTitle() {
-        guard title == nil, navigationItem.rightBarButtonItem == nil, let presenter = channelPresenter else {
+        guard title == nil, navigationItem.rightBarButtonItem == nil, let presenter = presenter else {
             return
         }
         
@@ -316,14 +331,14 @@ extension ChatViewController {
         }
         
         title = presenter.channel.name
-        let channelAvatar = AvatarView(cornerRadius: .messageAvatarRadius)
+        let channelAvatar = AvatarView(style: .init(radius: .messageAvatarRadius))
         navigationItem.rightBarButtonItem = UIBarButtonItem(customView: channelAvatar)
         let imageURL = presenter.parentMessage == nil ? presenter.channel.imageURL : presenter.parentMessage?.user.avatarURL
-        channelAvatar.update(with: imageURL, name: title, baseColor: style.incomingMessage.chatBackgroundColor)
+        channelAvatar.update(with: imageURL, name: title)
     }
     
     private func updateTitleReplyCount() {
-        guard title == "Thread", let parentMessage = channelPresenter?.parentMessage else {
+        guard title == "Thread", let parentMessage = presenter?.parentMessage else {
             return
         }
         
@@ -345,8 +360,6 @@ extension ChatViewController {
 extension ChatViewController {
     
     private func updateTableView(with changes: ViewChanges) {
-        markReadIfPossible()
-        
         switch changes {
         case .none, .itemMoved:
             return
@@ -370,6 +383,8 @@ extension ChatViewController {
                 self.items[0] = .loading(false)
             }
             
+            markReadIfPossible()
+            
         case let .itemsAdded(rows, reloadRow, forceToScroll, items):
             self.items = items
             let needsToScroll = tableView.bottomContentOffset < bottomThreshold
@@ -392,6 +407,9 @@ extension ChatViewController {
                     tableView.scrollToRowIfPossible(at: maxRow, animated: false)
                 }
             }
+            
+            markReadIfPossible()
+            
         case let .itemsUpdated(rows, messages, items):
             self.items = items
             
@@ -415,7 +433,7 @@ extension ChatViewController {
             
         case .disconnected:
             return
-                
+            
         case .error(let error):
             show(error: error)
         }
@@ -424,7 +442,7 @@ extension ChatViewController {
     }
     
     open func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return items.count
+        items.count
     }
     
     open func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -467,7 +485,7 @@ extension ChatViewController {
         if case .loading(let inProgress) = item {
             if !inProgress {
                 items[indexPath.row] = .loading(true)
-                channelPresenter?.loadNext()
+                presenter?.loadNext()
             }
         } else if let message = item.message {
             willDisplay(cell: cell, at: indexPath, message: message)
@@ -481,6 +499,6 @@ extension ChatViewController {
     }
     
     open func tableView(_ tableView: UITableView, shouldHighlightRowAt indexPath: IndexPath) -> Bool {
-        return false
+        false
     }
 }

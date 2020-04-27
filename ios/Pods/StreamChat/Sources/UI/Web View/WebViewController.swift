@@ -43,14 +43,21 @@ open class WebViewController: UIViewController, WKNavigationDelegate {
     }
     
     func setDocumentMenuViewControllerSoureViewsIfNeeded(_ viewControllerToPresent: UIViewController) {
+        // Prevent the app from crashing if the WKWebView decides to present a UIDocumentMenuViewController
+        // while it self is presented modally.
+        
+        // More info:
+        // - https://github.com/GetStream/stream-chat-swift/issues/66
+        // - https://stackoverflow.com/questions/58164583/wkwebview-with-the-new-ios13-modal-crash-when-a-file-picker-is-invoked
+        
         if #available(iOS 13, *),
-           viewControllerToPresent is UIDocumentMenuViewController && UIDevice.current.userInterfaceIdiom == .phone {
-            // Prevent the app from crashing if the WKWebView decides to present a UIDocumentMenuViewController while it self is presented modally.
+            // Using NSClassFromString to remove compiler's deprecation warning for `UIDocumentMenuViewController`.
+            let menuViewControllerClass = NSClassFromString("UIDocumentMenuViewController"),
+            viewControllerToPresent.isKind(of: menuViewControllerClass),
+            UIDevice.current.userInterfaceIdiom == .phone {
             viewControllerToPresent.popoverPresentationController?.sourceView = webView
-            viewControllerToPresent.popoverPresentationController?.sourceRect = CGRect(x: webView.center.x,
-                                                                                       y: webView.center.y,
-                                                                                       width: 1,
-                                                                                       height: 1)
+            viewControllerToPresent.popoverPresentationController?.sourceRect =
+                CGRect(x: webView.center.x, y: webView.center.y, width: 1, height: 1)
         }
     }
     

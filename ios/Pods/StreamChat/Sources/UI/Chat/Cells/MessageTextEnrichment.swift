@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import StreamChatClient
 import StreamChatCore
 import RxSwift
 import UIKit
@@ -58,17 +59,17 @@ final class MessageTextEnrichment {
     }
     
     var defaultAttributedString: NSMutableAttributedString {
-        return NSMutableAttributedString(string: text,
-                                         attributes: [.font: style.font,
-                                                      .foregroundColor: style.textColor,
-                                                      .backgroundColor: style.backgroundColor])
+        NSMutableAttributedString(string: text,
+                                  attributes: [.font: style.font,
+                                               .foregroundColor: style.textColor,
+                                               .backgroundColor: style.backgroundColor])
     }
     
     func enrich() -> Observable<NSAttributedString> {
-        return Observable.create({ [weak self] observer -> Disposable in
+        Observable.create({ [weak self] observer -> Disposable in
             if let self = self {
-                self.parseLinks()
                 self.parse()
+                self.parseLinks()
                 
                 if let attributedString = self.attributedString {
                     observer.onNext(attributedString)
@@ -208,6 +209,7 @@ private extension MessageTextEnrichment {
             return
         }
         
+        let text = attributedString?.string ?? self.text
         detectedURLs = DataDetector.shared.matchURLs(text)
         
         if detectedURLs.isEmpty {

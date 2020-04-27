@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import StreamChatClient
 import StreamChatCore
 import RxSwift
 
@@ -53,7 +54,7 @@ extension ChatViewController {
     }
     
     public func defaultActionSheet(from cell: UITableViewCell, for message: Message, locationInView: CGPoint) -> UIAlertController? {
-        guard let presenter = channelPresenter else {
+        guard let presenter = presenter else {
             return nil
         }
         
@@ -124,12 +125,11 @@ extension ChatViewController {
             }
             
             if messageActions.contains(.banUser),
-                let channelPresenter = channelPresenter,
-                channelPresenter.channel.banEnabling.isEnabled(for: channelPresenter.channel),
-                !channelPresenter.channel.isBanned(message.user) {
+                presenter.channel.banEnabling.isEnabled(for: presenter.channel),
+                !presenter.channel.isBanned(message.user) {
                 alert.addAction(.init(title: "Ban", style: .destructive, handler: { [weak self] _ in
-                    if let channelPresenter = self?.channelPresenter {
-                        self?.ban(user: message.user, channel: channelPresenter.channel)
+                    if let channel = self?.presenter?.channel {
+                        self?.ban(user: message.user, channel: channel)
                     }
                 }))
             }
@@ -163,8 +163,8 @@ extension ChatViewController {
     
     private func edit(message: Message) {
         composerView.text = message.text
-        channelPresenter?.editMessage = message
-        composerView.isEditing = true
+        presenter?.editMessage = message
+        composerView.styleState = .edit
         composerView.textView.becomeFirstResponder()
         
         if let composerAddFileContainerView = composerAddFileContainerView {
@@ -212,7 +212,7 @@ extension ChatViewController {
         
         alert.addAction(.init(title: "Delete", style: .destructive, handler: { [weak self] _ in
             if let self = self {
-                message.delete().subscribe().disposed(by: self.disposeBag)
+                message.rx.delete().subscribe().disposed(by: self.disposeBag)
             }
         }))
         
@@ -222,7 +222,7 @@ extension ChatViewController {
     }
     
     private func mute(user: User) {
-        user.mute()
+        user.rx.mute()
             .observeOn(MainScheduler.instance)
             .subscribe(onNext: { [weak self] _ in
                 if let backgroundColor = self?.view.backgroundColor {
@@ -233,7 +233,7 @@ extension ChatViewController {
     }
     
     private func unmute(user: User) {
-        user.unmute()
+        user.rx.unmute()
             .observeOn(MainScheduler.instance)
             .subscribe(onNext: { [weak self] _ in
                 if let backgroundColor = self?.view.backgroundColor {
@@ -244,7 +244,7 @@ extension ChatViewController {
     }
     
     private func flag(message: Message) {
-        message.flag()
+        message.rx.flag()
             .observeOn(MainScheduler.instance)
             .subscribe(onNext: { [weak self] _ in
                 if let backgroundColor = self?.view.backgroundColor {
@@ -255,7 +255,7 @@ extension ChatViewController {
     }
     
     private func unflag(message: Message) {
-        message.unflag()
+        message.rx.unflag()
             .observeOn(MainScheduler.instance)
             .subscribe(onNext: { [weak self] _ in
                 if let backgroundColor = self?.view.backgroundColor {
@@ -266,7 +266,7 @@ extension ChatViewController {
     }
     
     private func flag(user: User) {
-        user.flag()
+        user.rx.flag()
             .observeOn(MainScheduler.instance)
             .subscribe(onNext: { [weak self] _ in
                 if let backgroundColor = self?.view.backgroundColor {
@@ -277,7 +277,7 @@ extension ChatViewController {
     }
     
     private func unflag(user: User) {
-        user.unflag()
+        user.rx.unflag()
             .observeOn(MainScheduler.instance)
             .subscribe(onNext: { [weak self] _ in
                 if let backgroundColor = self?.view.backgroundColor {
@@ -288,9 +288,9 @@ extension ChatViewController {
     }
     
     private func ban(user: User, channel: Channel) {
-        channel.ban(user: user)
+        channel.rx.ban(user: user)
             .observeOn(MainScheduler.instance)
-            .subscribe(onNext: { [weak self] in
+            .subscribe(onNext: { [weak self] _ in
                 if let backgroundColor = self?.view.backgroundColor {
                     self?.showBanner("🙅‍♀️ Ban: \(user.name)", backgroundColor: backgroundColor)
                 }
@@ -311,10 +311,13 @@ extension ChatViewController {
             return nil
         }
         
+        guard let cell = tableView.cellForRow(at: indexPath),
+              let message = self.presenter?.items[safe: indexPath.row]?.message else {
+                return nil
+        }
+        
         return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak self] _ in
-            guard let self = self,
-                let cell = tableView.cellForRow(at: indexPath),
-                let message = self.channelPresenter?.items[indexPath.row].message else {
+            guard let self = self else {
                 return nil
             }
             
@@ -324,7 +327,7 @@ extension ChatViewController {
     }
     
     public func defaultActionsContextMenu(from cell: UITableViewCell, for message: Message, locationInView: CGPoint) -> UIMenu? {
-        guard let presenter = channelPresenter else {
+        guard let presenter = presenter else {
             return nil
         }
         
@@ -372,13 +375,13 @@ extension ChatViewController {
                     if message.isFlagged {
                         actions.append(UIAction(title: "Unflag the message",
                                                 image: UIImage(systemName: "flag.slash")) { [weak self] _ in
-                            self?.unflag(message: message)
+                                                    self?.unflag(message: message)
                         })
                     } else {
                         actions.append(UIAction(title: "Flag the message",
                                                 image: UIImage(systemName: "flag"),
                                                 attributes: [.destructive]) { [weak self] _ in
-                            self?.flag(message: message)
+                                                    self?.flag(message: message)
                         })
                     }
                 }
@@ -388,28 +391,27 @@ extension ChatViewController {
                     if message.user.isFlagged {
                         actions.append(UIAction(title: "Unflag the user",
                                                 image: UIImage(systemName: "hand.raised.slash")) { [weak self] _ in
-                            self?.unflag(user: message.user)
+                                                    self?.unflag(user: message.user)
                         })
                     } else {
                         actions.append(UIAction(title: "Flag the user",
                                                 image: UIImage(systemName: "hand.raised"),
                                                 attributes: [.destructive]) { [weak self] _ in
-                            self?.flag(user: message.user)
+                                                    self?.flag(user: message.user)
                         })
                     }
                 }
             }
             
             if messageActions.contains(.banUser),
-                let channelPresenter = channelPresenter,
-                channelPresenter.channel.banEnabling.isEnabled(for: channelPresenter.channel),
-                !channelPresenter.channel.isBanned(message.user) {
+                presenter.channel.banEnabling.isEnabled(for: presenter.channel),
+                !presenter.channel.isBanned(message.user) {
                 actions.append(UIAction(title: "Ban",
                                         image: UIImage(systemName: "exclamationmark.octagon"),
                                         attributes: [.destructive]) { [weak self] _ in
-                    if let channelPresenter = self?.channelPresenter {
-                        self?.ban(user: message.user, channel: channelPresenter.channel)
-                    }
+                                            if let channel = self?.presenter?.channel {
+                                                self?.ban(user: message.user, channel: channel)
+                                            }
                 })
             }
         }
@@ -418,7 +420,7 @@ extension ChatViewController {
             actions.append(UIAction(title: "Delete",
                                     image: UIImage(systemName: "trash"),
                                     attributes: [.destructive]) { [weak self] _ in
-                self?.conformDeleting(message: message)
+                                        self?.conformDeleting(message: message)
             })
         }
         

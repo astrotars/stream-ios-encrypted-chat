@@ -7,10 +7,9 @@
 //
 
 import UIKit
+import StreamChatClient
 import StreamChatCore
 
 extension AttachmentFileType {
-    var icon: UIImage {
-        return UIImage.chat(named: rawValue.lowercased())
-    }
+    var icon: UIImage { UIImage.chat(named: rawValue.lowercased()) }
 }

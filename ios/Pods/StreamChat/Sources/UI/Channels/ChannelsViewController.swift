@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import StreamChatClient
 import StreamChatCore
 import RxSwift
 import RxCocoa
@@ -16,24 +17,28 @@ open class ChannelsViewController: ViewController {
     
     /// A dispose bag for rx subscriptions.
     public var disposeBag = DisposeBag()
-    
     /// A chat style.
     public lazy var style = defaultStyle
-    
     /// A default chat style. This is useful for subclasses.
-    open var defaultStyle: ChatViewStyle {
-        return .default
-    }
+    open var defaultStyle: ChatViewStyle { .default }
+    
+    /// It will trigger `channel.stopWatching()` for each channel, if needed when the view controller was deallocated.
+    /// It's no needed if you will disconnect when the view controller will be deallocated.
+    public lazy var stopChannelsWatchingIfNeeded = defaultStopChannelsWatchingIfNeeded
+    
+    /// It will trigger `channel.stopWatching()`, for each channel  if needed when the view controller was deallocated.
+    /// It's no needed if you will disconnect when the view controller will be deallocated.
+    open var defaultStopChannelsWatchingIfNeeded: Bool { false }
     
     /// A list of table view items, e.g. channel presenters.
-    public private(set) var items = [ChatItem]()
+    public private(set) var items = [PresenterItem]()
     
     /// A channels presenter.
-    open var channelsPresenter = ChannelsPresenter() {
+    open var presenter = ChannelsPresenter(filter: .currentUserInMembers) {
         didSet {
             reset()
             
-            if isVisible {
+            if viewIfLoaded != nil {
                 setupChannelsPresenter()
             }
         }
@@ -44,7 +49,7 @@ open class ChannelsViewController: ViewController {
     
     /// A table view of channels.
     public private(set) lazy var tableView: UITableView = {
-        let tableView = UITableView(frame: .zero, style: .plain)
+        let tableView = TableView(frame: .zero, style: .plain)
         tableView.backgroundColor = style.channel.backgroundColor
         tableView.separatorColor = style.channel.separatorStyle.color
         tableView.separatorStyle = style.channel.separatorStyle.tableStyle
@@ -56,12 +61,13 @@ open class ChannelsViewController: ViewController {
         tableView.rowHeight = style.channel.height
         tableView.dataSource = self
         tableView.delegate = self
+        tableView.trackingClasses = [(ChannelTableViewCell.reuseIdentifier, ChannelTableViewCell.self)]
         tableView.register(cellType: ChannelTableViewCell.self)
         tableView.register(cellType: StatusTableViewCell.self)
         view.insertSubview(tableView, at: 0)
         tableView.makeEdgesEqualToSuperview()
         tableView.tableFooterView = UIView(frame: .zero)
-        
+                
         return tableView
     }()
     
@@ -107,8 +113,12 @@ open class ChannelsViewController: ViewController {
         }
     }
     
-    private func setupChannelsPresenter() {
-        channelsPresenter.changes
+    /// Setup the channels presenter for changes.
+    /// It will be called when the view controller will be visible or when the presenter was changed.
+    open func setupChannelsPresenter() {
+        presenter.stopChannelsWatchingIfNeeded = stopChannelsWatchingIfNeeded
+        
+        presenter.rx.changes
             .drive(onNext: { [weak self] in self?.updateTableView(with: $0) })
             .disposed(by: disposeBag)
     }
@@ -127,14 +137,45 @@ open class ChannelsViewController: ViewController {
     
     // MARK: - Channel Cell
     
+    /// Dequeues and returns the channel cell at a given indexPath.
+    ///
+    /// If the dequeued cell is `ChannelTableViewCell` or is a subclass of it, `updateChannelCell` function is called with it.
+    ///
+    /// This function should be overridden if one wants to customize their own cell class.
+    /// If your own cell class inherits from `ChannelTableViewCell`, simply register it in `tableView` as usual - you don't need to dequeue it manually.
+    /// You should override `updateChannelCell` function to configure your own `ChannelTableViewCell` subclass.
+    ///
+    /// - Parameter indexPath: indexPath to be dequeued
+    /// - Parameter channelPresenter: ChannelPresenter for the indexPath (see `ChannelPresenter`)
+    /// - Returns: Dequeued UITableViewCell for the given indexPath
     open func channelCell(at indexPath: IndexPath, channelPresenter: ChannelPresenter) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(for: indexPath) as ChannelTableViewCell
+        guard let channelTableView = tableView as? TableView,
+            let channelCellIdentifier = channelTableView.registeredClasses[ChannelTableViewCell.reuseIdentifier]?.identifier else {
+                return .unused
+        }
+        
+        let cell = tableView.dequeueReusableCell(withIdentifier: channelCellIdentifier, for: indexPath)
+        
+        guard let channelCell = cell as? ChannelTableViewCell else {
+            return .unused
+        }
+        
+        updateChannelCell(channelCell, channelPresenter: channelPresenter)
+        
+        return channelCell
+    }
+    
+    /// Configures a given `ChannelTableViewCell` (or any subclass or it)
+    ///
+    /// You can override this function to add your own functionality to any `ChannelTableViewCell` subclass you've created.
+    /// Calling `super` implementation when this function is overridden is suggested.
+    /// - Parameters:
+    ///   - cell: a `ChannelTableViewCell` (or a subclass) instance
+    ///   - channelPresenter: `ChannelPresenter` for the given cell
+    open func updateChannelCell(_ cell: ChannelTableViewCell, channelPresenter: ChannelPresenter) {
         cell.setupIfNeeded(style: style.channel)
         cell.nameLabel.text = channelPresenter.channel.name
-        
-        cell.avatarView.update(with: channelPresenter.channel.imageURL,
-                               name: channelPresenter.channel.name,
-                               baseColor: style.channel.backgroundColor)
+        updateChannelCellAvatarView(in: cell, channel: channelPresenter.channel)
         
         if let lastMessage = channelPresenter.lastMessage {
             var text = lastMessage.isDeleted ? "Message was deleted" : lastMessage.textOrArgs
@@ -146,13 +187,19 @@ open class ChannelsViewController: ViewController {
             }
             
             cell.update(message: text, isMeta: lastMessage.isDeleted, isUnread: channelPresenter.isUnread)
-            cell.dateLabel.text = lastMessage.updated.relative
+            cell.update(date: lastMessage.updated)
             
         } else {
             cell.update(message: "No messages", isMeta: true, isUnread: false)
         }
-        
-        return cell
+    }
+    
+    /// Updates channel avatar view with the given channel.
+    /// - Parameters:
+    ///   - cell: a channel cell.
+    ///   - channel: a channel.
+    open func updateChannelCellAvatarView(in cell: ChannelTableViewCell, channel: Channel) {
+        cell.avatarView.update(with: channel.imageURL, name: channel.name)
     }
     
     // MARK: - Loading Cell
@@ -163,8 +210,8 @@ open class ChannelsViewController: ViewController {
     ///   - indexPath: an index path.
     ///   - chatItem: a loading chat item.
     /// - Returns: a loading table view cell.
-    open func loadingCell(at indexPath: IndexPath, chatItem: ChatItem) -> UITableViewCell {
-        return chatItem.isLoading ? tableView.loadingCell(at: indexPath, textColor: style.channel.messageColor) : .unused
+    open func loadingCell(at indexPath: IndexPath, chatItem: PresenterItem) -> UITableViewCell {
+        chatItem.isLoading ? tableView.loadingCell(at: indexPath, textColor: style.channel.messageColor) : .unused
     }
     
     // MARK: - Show Chat
@@ -174,7 +221,8 @@ open class ChannelsViewController: ViewController {
             return
         }
         
-        let chatViewController = createChatViewController(with: channelPresenter, indexPath: indexPath)
+        let chatViewController = createChatViewController(with: channelPresenter)
+        setupChatViewController(chatViewController, with: channelPresenter)
         
         if let splitViewController = splitViewController {
             let navigationController = UINavigationController(rootViewController: chatViewController)
@@ -191,19 +239,26 @@ open class ChannelsViewController: ViewController {
     ///     - channelPresenter: a channel presenter of a selected row.
     ///     - indexPath: a selected index path.
     /// - Returns: a chat view controller.
-    open func createChatViewController(with channelPresenter: ChannelPresenter, indexPath: IndexPath) -> ChatViewController {
-        let chatViewController = ChatViewController(nibName: nil, bundle: nil)
+    open func createChatViewController(with channelPresenter: ChannelPresenter) -> ChatViewController {
+        ChatViewController(nibName: nil, bundle: nil)
+    }
+    
+    /// Setups the chat view controller for display.
+    ///
+    /// - Parameters:
+    ///     - chatViewController: ChatViewController to be configured
+    ///     - channelPresenter: Channel Presenter for the corresponding ChatViewController
+    open func setupChatViewController(_ chatViewController: ChatViewController, with channelPresenter: ChannelPresenter) {
         chatViewController.style = style
-        channelPresenter.eventsFilter = channelsPresenter.channelEventsFilter
-        chatViewController.channelPresenter = channelPresenter
-        return chatViewController
+        channelPresenter.eventsFilter = presenter.channelEventsFilter
+        chatViewController.presenter = channelPresenter
+        chatViewController.hidesBottomBarWhenPushed = true
     }
     
     /// Presents a chat view controller of a selected channel cell.
     ///
     /// - Parameter chatViewController: a chat view controller with a selected channel.
     open func show(chatViewController: ChatViewController) {
-        chatViewController.hidesBottomBarWhenPushed = true
         navigationController?.pushViewController(chatViewController, animated: true)
     }
 }
@@ -230,10 +285,7 @@ extension ChannelsViewController: UITableViewDataSource, UITableViewDelegate {
             }
             
         case .disconnected:
-            if User.current == nil {
-                reset()
-                return
-            }
+            reset()
             
         case .error:
             break
@@ -276,7 +328,7 @@ extension ChannelsViewController: UITableViewDataSource, UITableViewDelegate {
     }
     
     open func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return items.count
+        items.count
     }
     
     open func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -298,7 +350,7 @@ extension ChannelsViewController: UITableViewDataSource, UITableViewDelegate {
     open func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
         if indexPath.row < items.count, case .loading(let inProgress) = items[indexPath.row], !inProgress {
             items[indexPath.row] = .loading(true)
-            channelsPresenter.loadNext()
+            presenter.loadNext()
         }
     }
     
@@ -310,11 +362,13 @@ extension ChannelsViewController: UITableViewDataSource, UITableViewDelegate {
         return channelPresenter.channel.createdBy?.isCurrent ?? false
     }
     
-    open func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+    open func tableView(_ tableView: UITableView,
+                        commit editingStyle: UITableViewCell.EditingStyle,
+                        forRowAt indexPath: IndexPath) {
         guard editingStyle == .delete, let channelPresenter = channelPresenter(at: indexPath) else {
             return
         }
         
-        channelPresenter.channel.delete().subscribe().disposed(by: disposeBag)
+        channelPresenter.channel.rx.delete().subscribe().disposed(by: disposeBag)
     }
 }
