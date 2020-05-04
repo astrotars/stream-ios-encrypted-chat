@@ -12,9 +12,9 @@ import StreamChatCore
 import SnapKit
 import RxSwift
 
-final class AttachmentFilePreview: UIImageView, AttachmentPreviewProtocol {
+final class FileAttachmentPreview: UIImageView, AttachmentPreview {
     
-    let disposeBag = DisposeBag()
+    var index = 0
     var attachment: Attachment?
     
     private lazy var iconImageView: UIImageView = {
@@ -53,14 +53,28 @@ final class AttachmentFilePreview: UIImageView, AttachmentPreviewProtocol {
         
         label.snp.makeConstraints { make in
             make.top.equalTo(iconImageView.snp.centerY)
-            make.left.equalTo(iconImageView.snp.right).offset(CGFloat.messageEdgePadding)
+            make.left.equalTo(iconImageView.snp.right).offset(CGFloat.messageInnerPadding)
             make.right.equalToSuperview().offset(-CGFloat.messageEdgePadding)
         }
         
         return label
     }()
     
-    func update(maskImage: UIImage?, _ completion: @escaping Completion) {
+    /// Setup a message style.
+    func setup(attachment: Attachment, style: MessageViewStyle) {
+        self.attachment = attachment
+        backgroundColor = style.chatBackgroundColor
+        titleLabel.textColor = style.replyColor
+        sizeLabel.textColor = style.infoColor
+    }
+    
+    /// Update image mask.
+    func apply(imageMask: UIImage?) {
+        image = imageMask
+    }
+    
+    /// Update attachment preview with a given attachment.
+    func update(_ completion: Completion? = nil) {
         guard let attachment = attachment, let file = attachment.file else {
             return
         }
@@ -68,7 +82,6 @@ final class AttachmentFilePreview: UIImageView, AttachmentPreviewProtocol {
         iconImageView.image = file.type.icon
         titleLabel.text = attachment.title
         sizeLabel.text = file.sizeString
-        image = maskImage
-        completion(self, nil)
+        completion?(self, nil)
     }
 }
