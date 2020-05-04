@@ -5,7 +5,7 @@ import VirgilE3Kit
 class Account {
     public static let shared = Account()
 
-    let apiRoot = "https://623a2139.ngrok.io"
+    let apiRoot = "https://623a2139.ngrok.io" // make sure the backend is running and accessible via ngrok or something similar
     var authToken: String? = nil
     var userId: String? = nil
 

@@ -120,5 +120,111 @@ The first step is to authenticate a user and get our Stream and Virgil credentia
 
 ![](images/login.png)
 
+This is a simple form that takes any arbitrary name, effectively allowing us to log in as anyone (obviously, this should be an appropriate authentication method for you application). First let's add to `Main.storyboard`. We add a "Login View Controller" scene that's backed by a custom controller `LoginViewController` (to be defined). This should be nested beneath a Navigation Controller. Your storyboard should look something like this:
 
+![](images/login-storyboard.png)
 
+The form is a simple `Stack View` with a `username` field and submit button. Let's look at our custom `LoginViewController`:
+
+```swift
+// ios/EncryptedChat/LoginViewController.swift:3
+class LoginViewController: UIViewController {    
+    @IBOutlet weak var usernameField: UITextField!
+    
+    @IBAction func login(_ sender: Any) {
+        guard let userId = usernameField.text, !userId.isBlank else {
+            usernameField.placeholder = " ⚠️ User id"
+            return
+        }
+        
+        Account.shared.login(userId) {
+            DispatchQueue.main.async {
+                self.performSegue(withIdentifier: "UsersSegue", sender: self)
+            }
+        }
+    }
+}
+```
+
+The `usernameField` is bound to the Storyboard's `Username Field` and the login method is bound to `Login` button. When a user clicks login we check if there's a username and if so, we login via `Account.shared.login`. `Account` is a shared object that will store our credentials for future backend interactions. Once the login is performed we initiate the `UsersSegue` which boots our next scene. We'll see how this is done in a second, but first let's see how we login.
+
+Here's how we define `Account`:
+
+```swift
+// ios/EncryptedChat/Account.swift:5
+class Account {
+    public static let shared = Account()
+
+    let apiRoot = "https://623a2139.ngrok.io" // make sure the backend is running and accessible via ngrok or something similar
+    var authToken: String? = nil
+    var userId: String? = nil
+
+    public func login(_ userId: String, completion: @escaping () -> Void) {
+        AF
+            .request("\(apiRoot)/v1/authenticate",
+                     method: .post,
+                     parameters: ["user" : userId],
+                     encoder: JSONParameterEncoder.default)
+            .responseJSON { response in
+                let body = response.value as! NSDictionary
+                let authToken = body["authToken"]! as! String
+
+                self.authToken = authToken
+                self.userId = userId
+                
+                self.setupStream(completion)
+        }
+    }
+
+    //...
+}
+```
+
+First, we set up our shared object that will store our login state in the `authToken` and `userId` properties. Note, `apiRoot` which is how our app connects to our backend running on `localhost`. Please follow the instructions in the `backend` to run it. Use something like `ngrok` to facilitate the connection to `localhost`. Our `login` method uses Alamofire (`AF`) to make a `post` request to our backend with the user to log in. Upon a success, we store the `authToken` and `userId` and call `setupStream`. 
+
+The method `setupStream` initializes our Stream Chat client. Let's see it's implementation:
+
+```swift
+// ios/EncryptedStream/Account.swift:39
+private func setupStream(_ completion: @escaping () -> Void)  {
+    AF
+        .request("\(apiRoot)/v1/stream-credentials",
+                  method: .post,
+                  headers: ["Authorization" : "Bearer \(authToken!)"])
+        .responseJSON { response in
+            let body = response.value as! NSDictionary
+            let token = body["token"]! as! String
+            let apiKey = body["apiKey"]! as! String
+            
+            Client.config = .init(apiKey: apiKey, logOptions: .info)
+            Client.shared.set(
+                user: User(id: self.userId!),
+                token: token
+            )
+            
+            self.setupVirgil(completion)
+    }
+}
+```
+
+We call to the `backend` with our credentials from `login`. We get back a `token`, which is a Stream Chat frontend token. This token allows our mobile application to communicate directly with Stream without going through our `backend`. We also get a `apiKey` which identifies the Stream account we're using. We this data to initialize our Stream `Client` instance and set the user. Last, we initalize virgil via `setupVirgil`:
+
+```swift
+// ios/EncryptedChat/Account.swift:59
+private func setupVirgil(_ completion: @escaping () -> Void) {
+    AF
+        .request("\(apiRoot)/v1/virgil-credentials",
+                  method: .post,
+                  headers: ["Authorization" : "Bearer \(authToken!)"])
+        .responseJSON { response in
+            let body = response.value as! NSDictionary
+            let token = body["token"]! as! String
+      
+            VirgilClient.configure(identity: self.userId!, token: token)
+            
+            completion()
+    }
+}
+```
+
+TODO
