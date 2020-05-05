@@ -41,13 +41,6 @@ class VirgilClient {
     }
     
     public func decryptTheirs(_ text: String, from user: String) -> String {
-        do {
-            return try eThree!.authDecrypt(text: text, from: userCards[user]!)
-        } catch {
-            print("*********************")
-            print(error.localizedDescription)
-            print("*********************")
-            return error.localizedDescription
-        }
+        return try! eThree!.authDecrypt(text: text, from: userCards[user]!)
     }
 }

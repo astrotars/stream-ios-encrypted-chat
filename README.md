@@ -227,4 +227,189 @@ private func setupVirgil(_ completion: @escaping () -> Void) {
 }
 ```
 
-TODO
+This method requests our Virgil credentials and configures a custom `VirgilClient` which wraps Virgil's library. Once that's done, we call the `completion` to indicate success and allow the application to move on.
+
+Let's see what the beginning of our `VirgilClient` implementation looks like:
+
+```swift
+// ios/EncryptedChat/VirgilClient.swift:4
+class VirgilClient {
+    public static let shared = VirgilClient()
+    
+    private var eThree: EThree? = nil
+    // ...
+    
+    public static func configure(identity: String, token: String) {
+        let tokenCallback: EThree.RenewJwtCallback = { completion in
+            completion(token, nil)
+        }
+        let eThree = try! EThree(identity: identity, tokenCallback: tokenCallback)
+        
+        eThree.register { error in
+            if let error = error {
+                if error as? EThreeError == .userIsAlreadyRegistered {
+                    print("Already registered")
+                } else {
+                    print("Failed registering: \(error.localizedDescription)")
+                }
+            }
+        }
+        
+        shared.eThree = eThree
+    }
+
+    // ...
+}
+```
+
+`VirgilClient` is another singleton that is set up via `configure`. We take the `identity`  (which is our username) and token and generate a `tokenCallback`. This callback is used by the `EThree` client to get a new JWT token. In our case, we've kept it simple by just returning the same token, but in a real application you'd likely want to replace this with the rest call to the backend. 
+
+We use this token callback and identity to initialize `eThree`. We then use this instance to register the user. 
+
+Now we're set up to start chatting!
+
+## Step 2: Listing Users
+
+Next, we'll create a view to list other users. In the `Main.storyboard` we add a `UITableView` and back it by our custom `UsersViewController`:
+
+![](images/users-storyboard.png)
+
+And here's the first few lines of `UsersViewController`:
+
+```swift
+// ios/EncryptedChat/UsersViewController.swift:7
+class UsersViewController: UITableViewController {
+    var users = [String]()
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        loadUsers()
+    }
+    
+    func loadUsers() {
+        Account.shared.users { users in
+            self.users = users
+            self.tableView.reloadData()
+        }
+    }
+
+    // ...
+}
+```
+
+First, we fetch the users when the view is loaded. We do this via the `Account` instance which was configured during login. We store the users in a `users` property and reload the table view. 
+
+Let's see how we configure the table cells:
+
+```swift
+// ios/EncryptedChat/UsersViewController.swift:7  
+override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+    return users.count
+}
+
+override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    let cell = tableView.dequeueReusableCell(withIdentifier: "DefaultCell", for: indexPath)
+    cell.textLabel!.text = users[indexPath.row]
+    return cell
+}
+```
+
+In order to render the table correctly we indicate the number of rows via `users.count` and set the text of the cell to the user at that index. With this list of users we can set up a click action on a user's row to start a private 1-on-1 chat between the two users.
+
+## Step 3: Starting an Encrypted Chat Channel
+
+First, add a new blank view to `Main.storyboard` backed by a new custom class `EncryptedChatViewController` (we'll see its implementation in a minute):
+
+![](images/chat-storyboard.png)
+
+Add a segue between from the user's table row to show the new controller:
+
+![](images/segue.png)
+
+With that set up, we can hook into the segue via the `UITableViewController`'s `prepare` method:
+
+```swift
+// ios/EncryptedChat/UsersViewController.swift:32
+override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+    let userId = Account.shared.userId!
+    let userToChatWith = users[tableView.indexPathForSelectedRow!.row]
+    let channelId = [userId, userToChatWith].sorted().joined(separator: "-")
+    let viewController = segue.destination as! EncryptedChatViewController
+    
+    let channelPresenter = ChannelPresenter(
+        channel: Client.shared.channel(
+            type: .messaging,
+            id: channelId,
+            members: [User(id: userId), User(id: userToChatWith)]
+        )
+    )
+    
+    viewController.user = userId
+    viewController.otherUser = userToChatWith
+    viewController.presenter = channelPresenter
+}
+```
+
+Before transitioning to the new view, we need to set the view controller up. We generate a unique channel id using the user ids. We initialize a `ChannelPresenter` from the Stream library, set the type to messaging, and restrict the users. We grab the view controller from the segue and back it with the `ChannelPresenter`. This will tell the controller which channel to use. We also tell it what users are communicating.
+
+Let's see how controller creates this view:
+
+```swift
+// ios/EncryptedChat/EncryptedChatViewController.swift:6
+class EncryptedChatViewController: ChatViewController {
+    var user: String?
+    var otherUser: String?
+    
+    // ...
+}
+
+```
+
+Luckily, Stream comes with great UI components out of the box. We'll simply inherit from `ChatViewController` to do the hard work of displaying a chat. The presenter we set up tells the Stream UI component how to render. All we need to do now is hook into the message lifecycle to encrypt and decrypt messages on the fly.
+
+## Step 4: Sending an Encrypted Message
+
+Now we're ready to send our first encrypted message. Since we're using Stream's built in UI, all we need to do is hook into the message sending cycle. We'll do this via the `messagePreparationCallback` on the `ChannelPresenter`:
+
+```swift
+// ios/EncryptedChat/EncryptedChatViewController.swift:10
+override func viewDidLoad() {
+    super.viewDidLoad()
+    
+    guard let presenter = presenter else {
+        return
+    }
+    
+    VirgilClient.shared.prepareUser(otherUser!)
+    
+    presenter.messagePreparationCallback = {
+        var message = $0
+        message.text = VirgilClient.shared.encrypt(message.text, for: self.otherUser!)
+        return message
+    }
+}
+```
+
+Upon loading the view, we set up the callback. This is a hook provided by Stream to do any modifications we'd like to the message before it's sent over the wire. Since we want to fully encrypt the message, we grab the message and modify the text with the `VirgilClient` object. 
+
+In order for this to work, we need to look up the public key of the other user. Since this action requires a call to the Virgil API, it's asynchronous. We don't want to do this during message preperation so we do it ahead of time via `VirgilClient.shared.prepareUser(otherUser!)`. Let's see how that method is implemented:
+
+```swift
+// ios/EncryptedChat/VirgilClient.swift:29
+public func prepareUser(_ user: String) {
+    eThree!.findUser(with: user) { [weak self] result, _ in
+        self?.userCards[user] = result!
+    }
+}
+```
+
+This is relatively simple with Virgil's eThree kit. We find the user's `Card` which stores all of the information we need to encrypt our messages. We'll use this `Card` in the `encrypt` method during message preperation:
+
+```swift
+// ios/EncryptedChat/VirgilClient.swift:35
+public func encrypt(_ text: String, for user: String) -> String {
+    return try! eThree!.authEncrypt(text: text, for: userCards[user]!)
+}
+```
+
+Once again, this is made easy by Virgil. We simply pass the text and the correct user card to `authEncrypt` and we're done! Our message is now ciphertext ready to go over the wire.

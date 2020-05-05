@@ -5,7 +5,7 @@ import VirgilE3Kit
 class Account {
     public static let shared = Account()
 
-    let apiRoot = "https://623a2139.ngrok.io" // make sure the backend is running and accessible via ngrok or something similar
+    let apiRoot = "http://localhost:8080" // Make sure the backend is running and accessible. This app has NSAllowsArbitraryLoads set
     var authToken: String? = nil
     var userId: String? = nil
 
@@ -16,6 +16,7 @@ class Account {
                      parameters: ["user" : userId],
                      encoder: JSONParameterEncoder.default)
             .responseJSON { response in
+                print(response)
                 let body = response.value as! NSDictionary
                 let authToken = body["authToken"]! as! String
 
