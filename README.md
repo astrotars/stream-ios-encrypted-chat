@@ -412,4 +412,43 @@ public func encrypt(_ text: String, for user: String) -> String {
 }
 ```
 
-Once again, this is made easy by Virgil. We simply pass the text and the correct user card to `authEncrypt` and we're done! Our message is now ciphertext ready to go over the wire.
+Once again, this is made easy by Virgil. We simply pass the text and the correct user card to `authEncrypt` and we're done! Our message is now ciphertext ready to go over the wire. Stream's library will take care of the rest.
+
+## Step #5: Decrypting a Message
+
+Since we're using the `ChatViewController` to render the view, we only need to hook into the cell rendering. We need to decrypt the message text and pass it along. We override the `messageCell` method:
+
+```swift
+// ios/EncryptedChat/EncryptedChatViewController.swift:26    
+override func messageCell(at indexPath: IndexPath, message: Message, readUsers: [User]) -> UITableViewCell {        
+    var modifyMessage = message
+    
+    modifyMessage.text = message.user.id == user ?
+        VirgilClient.shared.decryptMine(message.text) :
+        VirgilClient.shared.decryptTheirs(message.text, from: otherUser!)
+
+    return super.messageCell(at: indexPath, message: modifyMessage, readUsers: readUsers)
+}
+```
+
+We make a copy of the message and set the message's text to the decrypted value. In this case, we need to know if it's our message or theirs. First, we'll look at how to decrypt ours:
+
+```swift
+// ios/EncryptedChat/VirgilClient.swift:39
+public func decryptMine(_ text: String) -> String {
+    return try! eThree!.authDecrypt(text: text)
+}
+```
+
+Since the message was originally encrypted on the device, we have everything we need. We simply ask Virgil to decrypt it via `authDecrypt`. Decrypting the other user's messages is a bit more work:
+
+```swift
+// ios/EncryptedChat/VirgilClient.swift:43
+public func decryptTheirs(_ text: String, from user: String) -> String {
+    return try! eThree!.authDecrypt(text: text, from: userCards[user]!)
+}
+```
+
+In this case, we use the same method but we pass the user card that we retrieved earlier.
+
+And that's all! We now have an application that uses end to end encryption to protect a user's information. Stream, nor your backend, will see anything but ciphertext.
