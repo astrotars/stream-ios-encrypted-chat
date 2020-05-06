@@ -4,7 +4,7 @@ In this tutorial, we'll build encrypted chat on iOS using Swift. We'll combine S
 
 ## What is end-to-end encryption?
 
-End-to-end encryption means that messages sent between two people can only be read by them. To do this, the message is encrypted before it leaves a user's device, and can only be decrypted by the intended recipient.
+End-to-end encryption means that messages sent between two people can only be read by them. To do this, the app encrypts the message before it leaves a user's device, and only the intended recipient decrypts the message.
 
 Virgil Security is a vendor that allows us to create end-to-end encryption via public/private key technology. Virgil provides a platform and a platform that allows us to securely create, store, and provide robust end-to-end encryption.
 
@@ -18,10 +18,10 @@ To accomplish this, the app performs the following process:
 
 * A user authenticates with your backend.
 * The iOS app requests a Stream auth token and API key from the `backend`. The Swift app creates a [Stream Chat Client](https://getstream.io/chat/docs/#init_and_users) for that user.
-* The mobile app requests a Virgil auth token from the `backend` and registers with Virgil. This generates their private and public key. The private key is stored locally, and the public key is stored in Virgil.
+* The mobile app requests a Virgil auth token from the `backend` and registers with Virgil. This generates their private and public key. The app stores the private key locally, and the public key is stored in Virgil.
 * Once the user decides who they want to chat with the app creates and joins a [Stream Chat Channel](https://getstream.io/chat/docs/#initialize_channel).
 * The app asks Virgil's API, via the eThree kit, for the receiver's public key.
-* The user types a message and sends it to stream. Before sending, the app passes the receiver's public key to Virgil to encrypt the message. The message is relayed through Stream Chat to the receiver. Stream receives ciphertext, meaning they can never see the original message.
+* The user types a message and sends it to stream. Before sending, the app passes the receiver's public key to Virgil to encrypt the message. Stream Chat relays the message to the receiver. However, Stream receives ciphertext, meaning they can never see the original message.
 * The receiving user decrypts the sent message using Virgil. When the message is received, the app decrypts the message using the Virgil and this is passed along to Stream's React components. Virgil verifies the message is authentic by using the sender's public key.
 
 While this looks complicated, Stream and Virgil do most of the work for us. We'll use Stream's out of the box Swift UI components to render the chat UI and Virgil to do all of the cryptography and key management. We simply combine these services. 
@@ -32,9 +32,9 @@ Let's walk through and look at the important code needed for each step.
 
 ## Prerequisites
 
-Basic knowledge of iOS (Swift) and Node.js is required to follow this tutorial. This code is intended to run locally on your machine. 
+Basic knowledge of iOS (Swift) and Node.js is expected. This code is intended to run locally on your machine. 
 
-You will need an account with [Stream](https://getstream.io/accounts/signup/) and [Virgil](https://dashboard.virgilsecurity.com/signup). Once you've created your accounts, you can place your credentials in `backend/.env` if you'd like to run the code. You can use `backend/.env.example` as a reference for what credentials are required.  Please see the README in the `backend` directory for more information.
+You will need an account with [Stream](https://getstream.io/accounts/signup/) and [Virgil](https://dashboard.virgilsecurity.com/signup). Once you've created your accounts, you can place your credentials in `backend/.env` if you'd like to run the code. You can use `backend/.env.example` as a reference for the required credentials.  Please see the README in the `backend` directory for more information.
 
 ## Step 0. Setup the Backend
 
@@ -112,7 +112,7 @@ For our Swift app to securely interact with Stream and Virgil, the `backend` pro
   
   In this case, the frontend only needs the auth token.
 
-* `GET /v1/users`: Endpoint for returning all users. This exists just to get a list of people to chat with. Please refer to the source if you're curious about how this is built. Please note the `backend` uses in-memory storage, so if you restart it will forget all of the users.
+* `GET /v1/users`: Endpoint for returning all users. This exists just to get a list of people to chat with. Please refer to the source if you're curious. Please note the `backend` uses in-memory storage, so if you restart it will forget all of the users.
 
 ## Step 1. User Authenticates With Backend
 
@@ -120,7 +120,7 @@ The first step is to authenticate a user and get our Stream and Virgil credentia
 
 ![](images/login.png)
 
-This is a simple form that takes any arbitrary name, effectively allowing us to log in as anyone (obviously, this should be an appropriate authentication method for your application). First, let's add to `Main.storyboard`. We add a "Login View Controller" scene that's backed by a custom controller `LoginViewController` (to be defined). This should be nested beneath a Navigation Controller. Your storyboard should look something like this:
+This is a simple form that takes any arbitrary name, effectively allowing us to log in as anyone (obviously, this should be an appropriate authentication method for your application). First, let's add to `Main.storyboard`. We add a "Login View Controller" scene that's backed by a custom controller `LoginViewController` (to be defined). This controller is embedded in a Navigation Controller. Your storyboard should look something like this:
 
 ![](images/login-storyboard.png)
 
@@ -146,7 +146,7 @@ class LoginViewController: UIViewController {
 }
 ```
 
-The `usernameField` is bound to the Storyboard's `Username Field` and the login method is bound to the `Login` button. When a user clicks login we check if there's a username and if so, we login via `Account.shared.login`. `Account` is a shared object that will store our credentials for future backend interactions. Once the login is performed we initiate the `UsersSegue` which boots our next scene. We'll see how this is done in a second, but first, let's see how we log in.
+The `usernameField` is bound to the Storyboard's `Username Field` and the login method is bound to the `Login` button. When a user clicks login we check if there's a username and if so, we login via `Account.shared.login`. `Account` is a shared object that will store our credentials for future backend interactions. Once the user logs in we initiate the `UsersSegue` which boots our next scene. We'll see how this is done in a second, but first, let's see how we log in.
 
 Here's how we define `Account`:
 
@@ -262,7 +262,7 @@ class VirgilClient {
 }
 ```
 
-`VirgilClient` is another singleton that is set up via `configure`. We take the `identity`  (which is our username) and token and generate a `tokenCallback`. This callback is used by the `EThree` client to get a new JWT token. In our case, we've kept it simple by just returning the same token, but in a real application, you'd likely want to replace this with the rest call to the backend. 
+`VirgilClient` is another singleton that is set up via `configure`. We take the `identity`  (which is our username) and token and generate a `tokenCallback`. The `EThree` client uses this callback to get a new JWT token. In our case, we've kept it simple by just returning the same token, but in a real application, you'd likely want to replace this with the rest call to the backend. 
 
 We use this token callback and identity to initialize `eThree`. We then use this instance to register the user. 
 
@@ -297,7 +297,7 @@ class UsersViewController: UITableViewController {
 }
 ```
 
-First, we fetch the users when the view is loaded. We do this via the `Account` instance which was configured during login. We store the users in a `users` property and reload the table view. 
+First, we fetch the users when the view loads. We do this via the `Account` instance configured during login. We store the users in a `users` property and reload the table view. 
 
 Let's see how we configure the table cells:
 
