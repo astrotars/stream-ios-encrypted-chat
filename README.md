@@ -1,34 +1,34 @@
 # Stream iOS (Swift) Encrypted Chat
 
-In this tutorial, we'll build encrypted chat on iOS using Swift. We'll combine Stream Chat and Virgil Security. Both Stream Chat and Virgil make it easy to build a solution with great security with all the features you expect. These two services allow developers to integrate chat that is zero-knowledge. The application embeds Virgil Security's [eThree Kit](https://github.com/VirgilSecurity/virgil-sdk-x) with [Stream Chat's Swift](https://github.com/GetStream/stream-chat-swift) components. All source code for this application is available on [GitHub](https://github.com/psylinse/stream-ios-encrypted-chat).
+In this tutorial, we'll build encrypted chat on iOS using Swift. We'll combine Stream Chat and Virgil Security. Both Stream Chat and Virgil make it easy to create a solution with high security with all the features you expect. These two services allow developers to integrate chat that is zero-knowledge. The application embeds Virgil Security's [E3Kit](https://github.com/VirgilSecurity/virgil-e3kit-x) with [Stream Chat's Swift](https://github.com/GetStream/stream-chat-swift) components. All source code for this application is available on [GitHub](https://github.com/nparsons08/stream-ios-encrypted-chat).
 
 ## What is end-to-end encryption?
 
-End-to-end encryption means that messages sent between two people can only be read by them. To do this, the app encrypts the message before it leaves a user's device, and only the intended recipient decrypts the message.
+End-to-end encryption means that two people can have trade messages via the internet without anyone else being able to read them, even if the transmission or storage is compromised. To do this, the app encrypts the message before it leaves a user's device, and only the intended recipient can decrypt the message.
 
-Virgil Security is a vendor that allows us to create end-to-end encryption via public/private key technology. Virgil provides a platform and a platform that allows us to securely create, store, and provide robust end-to-end encryption.
+Virgil Security is a vendor that allows us to create end-to-end encryption via public/private key technology. Virgil provides a platform that allows us to create, store, and offer robust end-to-end encryption securely.
 
-During this tutorial, we will create a Stream Chat app that uses Virgil's encryption to prevent anyone except the intended parties from reading messages. No one in your company, nor any cloud provider you use, can read these messages. Even if a malicious person gained access to the database containing the messages, all they would see is encrypted text, called ciphertext.
+During this tutorial, we will create a Stream Chat app that uses Virgil's encryption to prevent anyone except the intended parties from reading messages. No one in your company, nor any cloud provider you use, can read these messages. Even if a malicious person gained access to the database containing them, all they would see is encrypted text, called ciphertext.
 
 ## Building an Encrypted Chat Application
 
-To build this application we'll mostly rely on a few libraries from Stream Chat and Virgil (please check out the dependencies in the source to see what versions). Our final product will encrypt text on the device before sending a message. Decryption and verification will both happen in the receiver's device. Stream's Chat API will only see ciphertext, ensuring our user's data is never seen by anyone else, including you.
+To build this application, we'll mostly rely on a few libraries from Stream Chat and Virgil (please check out the dependencies in the source to see what versions). Our final product will encrypt text on the device before sending a message. Decryption and verification will both happen in the receiver's device. Stream's Chat API will only see ciphertext, ensuring our user's data is never seen by anyone else, including you.
 
 To accomplish this, the app performs the following process:
 
 * A user authenticates with your backend.
 * The iOS app requests a Stream auth token and API key from the `backend`. The Swift app creates a [Stream Chat Client](https://getstream.io/chat/docs/#init_and_users) for that user.
-* The mobile app requests a Virgil auth token from the `backend` and registers with Virgil. This generates their private and public key. The app stores the private key locally, and the public key is stored in Virgil.
-* Once the user decides who they want to chat with the app creates and joins a [Stream Chat Channel](https://getstream.io/chat/docs/#initialize_channel).
-* The app asks Virgil's API, via the Virgil's EThree kit, for the receiver's public key.
-* The user types a message and sends it to stream. Before sending, the app passes the receiver's public key to Virgil to encrypt the message. Stream Chat relays the message to the receiver. However, Stream receives ciphertext, meaning they can never see the original message.
-* The receiving user decrypts the sent message using Virgil. When the message is received, the app decrypts the message using the Virgil and this is passed along to Stream's React components. Virgil verifies the message is authentic by using the sender's public key.
+* The mobile app requests a Virgil auth token from the `backend` and registers with Virgil, which generates their private and public key. The app stores the private key locally, and the public key in Virgil Cloud.
+* Once the user decides who they want to chat with, the app creates and joins a [Stream Chat Channel](https://getstream.io/chat/docs/#initialize_channel).
+* The app asks Virgil's API, via E3Kit, for the receiver's public key.
+* The user types a message and encrypts it with the receiver's public key using E3Kit, then sends it to Stream.  After that, Stream Chat relays the message to the receiver. Stream only receives ciphertext, meaning they will never see the original message.
+* When the message is received, the app decrypts and verifies it using E3Kit and passes it along to Stream Chat's iOS components for display.
 
-While this looks complicated, Stream and Virgil do most of the work for us. We'll use Stream's out of the box Swift UI components to render the chat UI and Virgil to do all of the cryptography and key management. We simply combine these services. 
+While this looks complicated, Stream and Virgil do most of the work for us. We'll use Stream's out-of-the-box UI components to render the chat UI and Virgil to do all of the cryptography and key management. We simply combine these services. 
 
-The code is split between the iOS frontend contained in the `ios` folder and the Express (Node.js) backend is found in the `backend` folder. See the `README.md` in each folder to see installing and running instructions. If you'd like to follow along with running code, make sure you get both the `backend` and `ios` running before continuing.
+The code is split between the iOS frontend contained in the `ios` folder, and the Express (Node.js) backend is found in the `backend` folder. See the `README.md` in each folder to see installing and running instructions. If you'd like to follow along with running code, make sure you get both the `backend` and `ios` running before continuing.
 
-Let's walk through and look at the important code needed for each step.
+Let's walk through and look at the critical code needed for each step.
 
 ## Prerequisites
 
@@ -36,7 +36,7 @@ Basic knowledge of iOS (Swift) and Node.js is expected. This code is intended to
 
 You will need an account with [Stream](https://getstream.io/accounts/signup/) and [Virgil](https://dashboard.virgilsecurity.com/signup). Once you've created your accounts, you can place your credentials in `backend/.env` if you'd like to run the code. You can use `backend/.env.example` as a reference for the required credentials.  Please see the README in the `backend` directory for more information.
 
-## Step 0. Setup the Backend
+## Step 0. Set up the Backend
 
 For our Swift app to securely interact with Stream and Virgil, the `backend` provides four endpoints:
 
@@ -78,7 +78,7 @@ For our Swift app to securely interact with Stream and Virgil, the `backend` pro
   } 
   ```
   
-   * `apiKey` is the stream account identifier for your Stream instance. Needed to identify what account your frontend is trying to connect with.
+   * `apiKey` is the Stream account identifier for your Stream instance. It is needed to identify what account your frontend is trying to connect with.
    * `token` JWT token to authorize the frontend with Stream.
    * `user`: This object contains the data that the frontend needs to connect and render the user's view.
 
@@ -112,17 +112,17 @@ For our Swift app to securely interact with Stream and Virgil, the `backend` pro
   
   In this case, the frontend only needs the auth token.
 
-* `GET /v1/users`: Endpoint for returning all users. This exists just to get a list of people to chat with. Please refer to the source if you're curious. Please note the `backend` uses in-memory storage, so if you restart it will forget all of the users.
+* `GET /v1/users`: Endpoint for returning all users, which exists just to get a list of people to chat with. Please refer to the source if you're curious. Please note the `backend` uses in-memory storage, so if you restart, it will forget all of the users.
 
 ## Step 1. User Authenticates With Backend
 
 The first step is to authenticate a user and get our Stream and Virgil credentials. To keep thing simple, we have an insecure form that allows you to log in as anyone:
 
-![](images/login.png)
+![Image shows a form with a single username field and a login button](images/login.png)
 
 This is a simple form that takes any arbitrary name, effectively allowing us to log in as anyone (please use an appropriate authentication method for your application). First, let's add to `Main.storyboard`. We add a "Login View Controller" scene that's backed by a custom controller `LoginViewController` (to be defined). This controller is embedded in a Navigation Controller. Your storyboard should look something like this:
 
-![](images/login-storyboard.png)
+![Image shows a storyboard with a navigation controller pointing to a simple form controller](images/login-storyboard.png)
 
 The form is a simple `Stack View` with a `username` field and submit button. Let's look at our custom `LoginViewController`:
 
@@ -146,7 +146,7 @@ class LoginViewController: UIViewController {
 }
 ```
 
-The `usernameField` is bound to the Storyboard's `Username Field` and the login method is bound to the `Login` button. When a user clicks login we check if there's a username and if so, we login via `Account.shared.login`. `Account` is a shared object that will store our credentials for future backend interactions. Once the user logs in we initiate the `UsersSegue` which boots our next scene. We'll see how this is done in a second, but first, let's see how the `Account` object logs in.
+The `usernameField` is bound to the storyboard's `Username Field`, and the login method is bound to the `Login` button. When a user clicks login, we check if there's a username and if so, we log in via `Account.shared.login`. `Account` is a shared object that will store our credentials for future backend interactions. Once the user logs in, we initiate the `UsersSegue`, which boots our next scene. We'll see how this is done in a second, but first, let's see how the `Account` object logs in.
 
 Here's how we define `Account`:
 
@@ -180,7 +180,7 @@ class Account {
 }
 ```
 
-First, we set up our shared object that will store our login state in the `authToken` and `userId` properties. Note, `apiRoot` which is how our app connects to our backend running on `localhost`. Please follow the instructions in the `backend` to run it. Our `login` method uses Alamofire (`AF`) to make a `post` request to our backend with the user to log in. Upon success, we store the `authToken` and `userId` and call `setupStream`. 
+First, we set up our shared object that will store our login state in the `authToken` and `userId` properties. Note, `apiRoot`  is the IP address where our backend is running. Please follow the instructions in the `backend` to run it. Our `login` method uses Alamofire (`AF`) to make a `post` request to our backend with the user to log in. Upon success, we store the `authToken` and `userId`, and then we call `setupStream`. 
 
 The method `setupStream` initializes our Stream Chat client. Here's the implementation:
 
@@ -207,7 +207,7 @@ private func setupStream(_ completion: @escaping () -> Void)  {
 }
 ```
 
-We call to the `backend` with our credentials from `login`. We get back a `token`, which is a Stream Chat frontend token. This token allows our mobile application to communicate directly with Stream without going through our `backend`. We also get a `apiKey` which identifies the Stream account we're using. We this data to initialize our Stream `Client` instance and set the user. Last, we initalize virgil via `setupVirgil`:
+We call to the `backend` with our credentials from `login`. We get back a `token`, which is a Stream Chat token. This token allows our mobile application to communicate directly with Stream without going through our `backend`. We also get an `apiKey` which identifies the Stream account we're using. We need this data to initialize our Stream `Client` instance and set the user. Last, we initalize Virgil via `setupVirgil`:
 
 ```swift
 // ios/EncryptedChat/Account.swift:59
@@ -227,7 +227,7 @@ private func setupVirgil(_ completion: @escaping () -> Void) {
 }
 ```
 
-This method requests our Virgil credentials and configures a custom `VirgilClient` which wraps Virgil's library. Once that's done, we call the `completion` to indicate success and allow the application to move on.
+This method requests our Virgil credentials and configures a `VirgilClient` class we defined, which wraps Virgil's E3Kit library. Once that's done, we call the `completion` to indicate success and allow the application to move on.
 
 Let's see what the beginning of our `VirgilClient` implementation looks like:
 
@@ -262,7 +262,7 @@ class VirgilClient {
 }
 ```
 
-`VirgilClient` is another singleton that is set up via `configure`. We take the `identity`  (which is our username) and token and generate a `tokenCallback`. The `EThree` client uses this callback to get a new JWT token. In our case, we've kept it simple by just returning the same token, but in a real application, you'd likely want to replace this with the rest call to the backend. 
+`VirgilClient` is a singleton that is set up via `configure`. We take the `identity` (which is our username) and token, and then we generate a `tokenCallback`. The `EThree` client uses this callback to get a new JWT token. In our case, we've kept it simple by just returning the same token, but in a real application, you'd likely want to replace this with the rest call to the backend.
 
 We use this token callback and identity to initialize `eThree`. We then use this instance to register the user. 
 
@@ -272,7 +272,7 @@ Now we're set up to start chatting!
 
 Next, we'll create a view to list users. In the `Main.storyboard` we add a `UITableView` and back it by our custom `UsersViewController`:
 
-![](images/users-storyboard.png)
+![Image shows a storyboard with a navigation controller with a segue to the login form and a segue to the users controller](images/users-storyboard.png)
 
 And here's the first few lines of `UsersViewController`:
 
@@ -297,7 +297,7 @@ class UsersViewController: UITableViewController {
 }
 ```
 
-First, we fetch the users when the view loads. We do this via the `Account` instance configured during login. This action simply hits the `/v1/users` endpoint. Refer to the source if you're curios. We store the users in a `users` property and reload the table view. 
+First, we fetch the users when the view loads. We do this via the `Account` instance configured during login. This action simply hits the `/v1/users` endpoint. Refer to the source if you're curious. We store the users in a `users` property and reload the table view. 
 
 Let's see how we configure the table cells:
 
@@ -314,17 +314,17 @@ override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexP
 }
 ```
 
-To render the table correctly we indicate the number of rows via `users.count` and set the text of the cell to the user at that index. With this list of users, we can set up a click action on a user's row to start a private 1-on-1 chat between the two users.
+To render the table correctly we indicate the number of rows via `users.count` and set the text of the cell to the user at that index. With this list of users, we can set up a click action on a user's row to start a private 1-on-1 chat with them.
 
 ## Step 3: Starting an Encrypted Chat Channel
 
 First, add a new blank view to `Main.storyboard` backed by a new custom class `EncryptedChatViewController` (we'll see its implementation in a minute):
 
-![](images/chat-storyboard.png)
+![Image shows the same storyboard, now with an empty encrypted chat controller](images/chat-storyboard.png)
 
 Add a segue between from the user's table row to show the new controller:
 
-![](images/segue.png)
+![Image shows the same storyboard, now highlighting the segue between the users and encrypted chat controller](images/segue.png)
 
 With that set up, we can hook into the segue via the `UITableViewController`'s `prepare` method:
 
@@ -352,7 +352,7 @@ override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
 
 Before transitioning to the new view, we need to set the view controller up. We generate a unique channel id using the user ids. We initialize a `ChannelPresenter` from the Stream library, set the type to messaging, and restrict the users. We grab the view controller from the segue and back it with the `ChannelPresenter`. This will tell the controller which channel to use. We also tell it what users are communicating.
 
-Let's see how controller creates this view:
+Let's see how the controller creates this view:
 
 ```swift
 // ios/EncryptedChat/EncryptedChatViewController.swift:6
@@ -365,7 +365,7 @@ class EncryptedChatViewController: ChatViewController {
 
 ```
 
-Luckily, Stream comes with great UI components out of the box. We'll simply inherit from `ChatViewController` to do the hard work of displaying a chat. The presenter we set up tells the Stream UI component how to render. All we need to do now is hook into the message lifecycle to encrypt and decrypt messages on the fly.
+Luckily, Stream comes with excellent UI components out of the box. We'll simply inherit from `ChatViewController` to do the hard work of displaying a chat. The presenter we set up tells the Stream UI component how to render. All we need to do now is hook into the message lifecycle to encrypt and decrypt messages on the fly.
 
 ## Step 4: Sending an Encrypted Message
 
@@ -390,7 +390,7 @@ override func viewDidLoad() {
 }
 ```
 
-Upon loading the view, we set up the callback. This is a hook provided by Stream to do any modifications we'd like to the message before it's sent over the wire. Since we want to fully encrypt the message, we grab the message and modify the text with the `VirgilClient` object. 
+Upon loading the view, we set up the callback, which is a hook provided by Stream, to make any modifications we'd like to the message before sending it over the wire. Since we want to encrypt the message fully, we grab it and modify the text with the `VirgilClient` object. 
 
 In order for this to work, we need to look up the public key of the other user. Since this action requires a call to the Virgil API, it's asynchronous. We don't want to do this during message preperation so we do it ahead of time via `VirgilClient.shared.prepareUser(otherUser!)`. Let's see how that method is implemented:
 
@@ -403,7 +403,7 @@ public func prepareUser(_ user: String) {
 }
 ```
 
-This is relatively simple with Virgil's eThree kit. We find the user's `Card` which stores all of the information we need to encrypt and decrypt messages. We'll use this `Card` in the `encrypt` method during message preperation:
+This is relatively simple with Virgil's E3Kit. We find the user's `Card` which stores all of the information we need to encrypt and decrypt messages. We'll use this `Card` in the `encrypt` method during message preperation:
 
 ```swift
 // ios/EncryptedChat/VirgilClient.swift:35
@@ -412,7 +412,7 @@ public func encrypt(_ text: String, for user: String) -> String {
 }
 ```
 
-Once again, this is made easy by Virgil. We simply pass the text and the correct user card to `authEncrypt` and we're done! Our message is now ciphertext ready to go over the wire. Stream's library will take care of the rest.
+Once again, this is made easy by Virgil. We simply pass the text and the correct user card to `authEncrypt`, and we're done! Our message is now ciphertext ready to go over the wire. Stream's library will take care of the rest.
 
 ## Step #5: Decrypting a Message
 
@@ -440,7 +440,7 @@ public func decryptMine(_ text: String) -> String {
 }
 ```
 
-Since the message was originally encrypted on the device, we have everything we need. We simply ask Virgil to decrypt it via `authDecrypt`. Decrypting the other user's messages is a bit more work:
+Since the message was originally encrypted on the device, we have everything we need. We simply ask Virgil E3Kit to decrypt it via `authDecrypt`. Decrypting the other user's messages is a bit more work:
 
 ```swift
 // ios/EncryptedChat/VirgilClient.swift:43
@@ -449,8 +449,8 @@ public func decryptTheirs(_ text: String, from user: String) -> String {
 }
 ```
 
-In this case, we use the same method but we pass the user card that we retrieved earlier. Now we can see our full chat:
+In this case, we use the same method, but we pass the user card that we retrieved earlier, which verifies the message's authenticity. Now we can see our full chat:
 
-![](images/chat.png)
+![Image shows an encrypted conversation between two users](images/chat.png)
 
-And that's all! We now have an application that uses end to end encryption to protect a user's information. Stream, nor you, will see anything but ciphertext.
+And that's all! We now have an application that uses end-to-end encryption to protect a user's conversation. Stream and you can see nothing but ciphertext.
