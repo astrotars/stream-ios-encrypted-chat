@@ -3,7 +3,7 @@ inhibit_all_warnings!
 
 target 'EncryptedChat' do
   use_frameworks!
-  pod 'StreamChat', '~> 2.1'
+  pod 'StreamChat', '~> 2.1.1'
   pod 'Alamofire', '~> 5.0'
   pod 'VirgilE3Kit', '~> 2.0.0'
 end
